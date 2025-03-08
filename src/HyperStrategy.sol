@@ -1,23 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {AccessControlUpgradeable} from
-    "lib/allo-v2.1/lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {UUPSUpgradeable} from
-    "lib/allo-v2.1/lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {AccessControl} from
+    "lib/allo-v2.1/lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {BaseStrategy} from "strategies/BaseStrategy.sol";
 import {IAllo} from "lib/allo-v2.1/contracts/core/interfaces/IAllo.sol";
 
-contract HyperStrategy is AccessControlUpgradeable, UUPSUpgradeable, BaseStrategy {
+contract HyperStrategy is AccessControl, BaseStrategy {
     // Roles
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     error NOOP();
 
-    function initialize(uint256 _poolId, bytes memory _data) public initializer {
-        __AccessControl_init();
-        __UUPSUpgradeable_init();
-
+    function initialize(uint256 _poolId, bytes memory _data) external virtual override {
         address _manager = abi.decode(_data, (address));
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -30,8 +25,6 @@ contract HyperStrategy is AccessControlUpgradeable, UUPSUpgradeable, BaseStrateg
     /// ========= Constructor =========
     /// ===============================
     constructor(address _allo, string memory _name) BaseStrategy(_allo, _name) {}
-
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(MANAGER_ROLE) {}
 
     /// @notice Allocate funds hyperfund and hyperstaker pools
     /// @param _data The data to decode
