@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {AccessControlUpgradeable} from "lib/allo-v2.1/lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {UUPSUpgradeable} from "lib/allo-v2.1/lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {AccessControlUpgradeable} from
+    "lib/allo-v2.1/lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {UUPSUpgradeable} from
+    "lib/allo-v2.1/lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {BaseStrategy} from "strategies/BaseStrategy.sol";
 import {IAllo} from "lib/allo-v2.1/contracts/core/interfaces/IAllo.sol";
 
-
 contract HyperStrategy is AccessControlUpgradeable, UUPSUpgradeable, BaseStrategy {
-
     // Roles
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
@@ -25,7 +25,7 @@ contract HyperStrategy is AccessControlUpgradeable, UUPSUpgradeable, BaseStrateg
         __BaseStrategy_init(_poolId);
         emit Initialized(_poolId, _data);
     }
-    
+
     /// ===============================
     /// ========= Constructor =========
     /// ===============================
@@ -36,29 +36,23 @@ contract HyperStrategy is AccessControlUpgradeable, UUPSUpgradeable, BaseStrateg
     /// @notice Allocate funds hyperfund and hyperstaker pools
     /// @param _data The data to decode
     /// @param _sender The sender
-    function _allocate(bytes memory _data, address _sender)
-        internal
-        virtual
-        override
-        onlyRole(MANAGER_ROLE)
-    {
-      (address[] memory _recipients, uint256[] memory _amounts) = abi.decode(_data, (address[], uint256[]));
+    function _allocate(bytes memory _data, address _sender) internal virtual override onlyRole(MANAGER_ROLE) {
+        (address[] memory _recipients, uint256[] memory _amounts) = abi.decode(_data, (address[], uint256[]));
 
-      // Assert recipient and amounts length are equal
-      if (_recipients.length != _amounts.length) {
-          revert ARRAY_MISMATCH();
-      }
+        // Assert recipient and amounts length are equal
+        if (_recipients.length != _amounts.length) {
+            revert ARRAY_MISMATCH();
+        }
 
-      IAllo.Pool memory pool = allo.getPool(poolId);
-      for (uint256 i; i < _recipients.length; ++i) {
-          uint256 _amount = _amounts[i];
-          address _recipientAddress = _recipients[i];
+        IAllo.Pool memory pool = allo.getPool(poolId);
+        for (uint256 i; i < _recipients.length; ++i) {
+            uint256 _amount = _amounts[i];
+            address _recipientAddress = _recipients[i];
 
-          _transferAmount(pool.token, _recipientAddress, _amount);
+            _transferAmount(pool.token, _recipientAddress, _amount);
 
-          emit Allocated(_recipientAddress, _amount, pool.token, _sender);
-      }
-
+            emit Allocated(_recipientAddress, _amount, pool.token, _sender);
+        }
     }
 
     function _distribute(address[] memory _recipientIds, bytes memory _recipientAmounts, address _sender)
@@ -66,7 +60,7 @@ contract HyperStrategy is AccessControlUpgradeable, UUPSUpgradeable, BaseStrateg
         virtual
         override
     {
-      revert NOOP();
+        revert NOOP();
     }
 
     function _getRecipientStatus(address) internal view virtual override returns (Status) {
