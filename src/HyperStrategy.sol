@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 import {AccessControl} from "lib/allo-v2.1/lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {BaseStrategy} from "strategies/BaseStrategy.sol";
