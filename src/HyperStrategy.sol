@@ -11,10 +11,14 @@ contract HyperStrategy is AccessControl, BaseStrategy {
     // Roles
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
+    // Interfaces
     IHyperfund public hyperfund;
-
     IHypercertToken public hypercertMinter;
 
+    // Events
+    event Donated(address donor, address token, uint256 amount, uint256 hypercertUnits);
+
+    // Errors
     error NOOP();
 
     function initialize(uint256 _poolId, bytes memory _data) external virtual override {
@@ -70,6 +74,7 @@ contract HyperStrategy is AccessControl, BaseStrategy {
         uint256 availableSupply = hypercertMinter.unitsOf(hypercertFraction);
         require(availableSupply >= units);
         _mintFraction(tx.origin, units, hypercertFraction);
+        emit Donated(tx.origin, pool.token, _amount, units);
     }
 
     function _distribute(address[] memory _recipientIds, bytes memory _recipientAmounts, address _sender)
