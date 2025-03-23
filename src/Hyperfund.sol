@@ -59,7 +59,7 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// by calling hypercertMinter.setApprovalForAll(address(proxy), true)
     /// @param _manager The address that will have the MANAGER_ROLE in the new Hyperfund, pausers and upgraders can be added later
     /// @param _storage The immutable storage contract for this hyperfund
-    function initialize(address _storage, address _manager, uint256 _fractionCounter) public initializer {
+    function initialize(address _storage, address _manager) public initializer {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
@@ -179,7 +179,6 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
         uint256[] memory newallocations = new uint256[](2);
         newallocations[0] = hypercertMinter.unitsOf(hypercertId) - units;
         newallocations[1] = units;
-        address hypercertOwner = hypercertMinter.ownerOf(hypercertId);
         hypercertMinter.splitFraction(account, hypercertId, newallocations);
     }
 
