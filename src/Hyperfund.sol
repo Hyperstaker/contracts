@@ -57,9 +57,8 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// @notice Initialize the contract, to be called by proxy
     /// @notice NOTE: after deployment of proxy, the hypercert owner must approve the proxy contract to split and burn fractions
     /// by calling hypercertMinter.setApprovalForAll(address(proxy), true)
-    /// @param _manager The address that will have the MANAGER_ROLE in the new Hyperfund, pausers and upgraders can be added later
     /// @param _storage The immutable storage contract for this hyperfund
-
+    /// @param _manager The address that will have the MANAGER_ROLE in the new Hyperfund, pausers and upgraders can be added later
     function initialize(address _storage, address _manager) public initializer {
         __AccessControl_init();
         __Pausable_init();

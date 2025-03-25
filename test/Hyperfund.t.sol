@@ -44,7 +44,7 @@ contract HyperfundTest is Test {
         hyperfundStorage = new HyperfundStorage(address(hypercertMinter), fractionHypercertId);
         implementation = new Hyperfund();
         bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager, 1);
+            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
 
         proxy = new ERC1967Proxy(address(implementation), initData);
         hypercertMinter.setApprovalForAll(address(proxy), true);
