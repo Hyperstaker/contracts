@@ -17,7 +17,7 @@ contract HyperfundTest is Test {
     IHypercertToken public hypercertMinter;
     HyperfundStorage public hyperfundStorage;
     MockERC20 public fundingToken;
-    uint256 public baseHypercertId;
+    uint256 public hypercertTypeId;
     uint256 public fractionHypercertId;
     address public manager = vm.addr(1);
     address public contributor = vm.addr(2);
@@ -37,11 +37,11 @@ contract HyperfundTest is Test {
         hypercertMinter.mintClaim(address(this), totalUnits, "uri", IHypercertToken.TransferRestrictions.AllowAll);
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        baseHypercertId = uint256(entries[0].topics[1]);
-        fractionHypercertId = baseHypercertId + 1;
+        hypercertTypeId = uint256(entries[0].topics[1]);
+        fractionHypercertId = hypercertTypeId + 1;
         assertEq(hypercertMinter.ownerOf(fractionHypercertId), address(this));
         fundingToken = new MockERC20("Funding", "FUND");
-        hyperfundStorage = new HyperfundStorage(address(hypercertMinter), fractionHypercertId);
+        hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         implementation = new Hyperfund();
         bytes memory initData =
             abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
@@ -371,10 +371,10 @@ contract HyperfundTest is Test {
         hypercertMinter.mintClaim(contributor, totalUnits, "uri", IHypercertToken.TransferRestrictions.AllowAll);
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        uint256 baseHypercertId1 = uint256(entries[0].topics[1]);
-        uint256 fractionHypercertId1 = baseHypercertId1 + 1;
-        vm.expectRevert(abi.encodeWithSelector(Hyperfund.NotFractionOfThisHypercert.selector, fractionHypercertId));
-        hyperfund.redeem(fractionHypercertId1, address(fundingToken));
+        uint256 hypercertTypeId1 = uint256(entries[0].topics[1]);
+        uint256 hypercertId1 = hypercertTypeId1 + 1;
+        vm.expectRevert(abi.encodeWithSelector(Hyperfund.NotFractionOfThisHypercert.selector, hypercertTypeId));
+        hyperfund.redeem(hypercertId1, address(fundingToken));
         vm.stopPrank();
     }
 
