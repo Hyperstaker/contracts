@@ -16,7 +16,7 @@ contract HyperStrategy is AccessControl, BaseStrategy {
     IHypercertToken public hypercertMinter;
 
     // Events
-    event Donated(address donor, address token, uint256 amount, uint256 hypercertUnits);
+    event Donated(address indexed donor, address token, uint256 amount, uint256 indexed hypercertUnits);
 
     // Errors
     error NOOP();
