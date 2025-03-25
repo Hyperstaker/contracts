@@ -10,20 +10,19 @@ import {IHypercertToken} from "./interfaces/IHypercertToken.sol";
 import {HyperfundStorage} from "./HyperfundStorage.sol";
 
 error NoUnitsInHypercert();
-error WrongBaseHypercert(uint256 baseHypercertId, uint256 expectedBaseHypercertId);
+error WrongHypercertType(uint256 hypercertTypeId, uint256 expectedHypercertTypeId);
 error NoRewardAvailable();
 error AlreadyClaimed();
 error NotStaked();
 error RewardTransferFailed();
 error NativeTokenTransferFailed();
 error IncorrectRewardAmount(uint256 actualRewardAmount, uint256 expectedRewardAmount);
-error NotBaseType();
 
 contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     uint256 internal constant TYPE_MASK = type(uint256).max << 128;
 
     IHypercertToken public hypercertMinter;
-    uint256 public baseHypercertId;
+    uint256 public hypercertTypeId;
     uint256 public totalUnits;
     address public rewardToken;
     uint256 public totalRewards;
@@ -68,7 +67,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
 
         HyperfundStorage storage_ = HyperfundStorage(_storage);
         hypercertMinter = IHypercertToken(storage_.hypercertMinter());
-        baseHypercertId = storage_.hypercertTypeId();
+        hypercertTypeId = storage_.hypercertTypeId();
         totalUnits = storage_.hypercertUnits();
         roundStartTime = block.timestamp;
     }
@@ -92,7 +91,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     function stake(uint256 _hypercertId) external whenNotPaused {
         uint256 units = hypercertMinter.unitsOf(_hypercertId);
         require(units > 0, NoUnitsInHypercert());
-        require(_getBaseType(_hypercertId) == baseHypercertId, WrongBaseHypercert(_hypercertId, baseHypercertId));
+        require(_getHypercertTypeId(_hypercertId) == hypercertTypeId, WrongHypercertType(_hypercertId, hypercertTypeId));
 
         stakes[_hypercertId].stakingStartTime = block.timestamp;
         emit Staked(_hypercertId);
@@ -142,7 +141,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         return stakes[_hypercertId];
     }
 
-    function _getBaseType(uint256 _hypercertId) internal pure returns (uint256) {
+    function _getHypercertTypeId(uint256 _hypercertId) internal pure returns (uint256) {
         return _hypercertId & TYPE_MASK;
     }
 }

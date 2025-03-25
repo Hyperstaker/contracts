@@ -38,7 +38,7 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     event FundsWithdrawn(address token, uint256 amount, address to);
     event Funded(address token, uint256 amount);
     event NonfinancialContribution(address contributor, uint256 units);
-    event FractionRedeemed(uint256 fractionId, address token, uint256 amount);
+    event FractionRedeemed(uint256 hypercertId, address token, uint256 amount);
 
     // Errors
     error TokenNotAllowlisted();
@@ -69,8 +69,8 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
 
         HyperfundStorage storage_ = HyperfundStorage(_storage);
         hypercertMinter = IHypercertToken(storage_.hypercertMinter());
-        hypercertId = storage_.hypercertId();
         hypercertTypeId = storage_.hypercertTypeId();
+        hypercertId = hypercertTypeId + 1;
         hypercertUnits = storage_.hypercertUnits();
     }
 
@@ -153,7 +153,7 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// @param _token address of the token to redeem, must be allowlisted. address(0) for native token
     function redeem(uint256 _fractionId, address _token) external whenNotPaused {
         require(hypercertMinter.ownerOf(_fractionId) == msg.sender, Unauthorized());
-        require(_isFraction(_fractionId), NotFractionOfThisHypercert(hypercertId));
+        require(_isFraction(_fractionId), NotFractionOfThisHypercert(hypercertTypeId));
         uint256 units = hypercertMinter.unitsOf(_fractionId);
         uint256 tokenAmount = _unitsToTokenAmount(_token, units);
         if (_token == address(0)) {

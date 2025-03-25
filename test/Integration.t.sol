@@ -17,8 +17,8 @@ contract IntegrationTest is Test {
     IHypercertToken public hypercertMinter;
     HyperfundStorage public hyperfundStorage;
     MockERC20 public fundingToken;
-    uint256 public baseHypercertId;
-    uint256 public fractionHypercertId;
+    uint256 public hypercertTypeId;
+    uint256 public hypercertId;
     address public manager = vm.addr(1);
     address public contributor = vm.addr(2);
     address public contributor2 = vm.addr(3);
@@ -36,10 +36,10 @@ contract IntegrationTest is Test {
         hypercertMinter.mintClaim(address(this), totalUnits, "uri", IHypercertToken.TransferRestrictions.AllowAll);
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        baseHypercertId = uint256(entries[0].topics[1]);
-        fractionHypercertId = baseHypercertId + 1;
+        hypercertTypeId = uint256(entries[0].topics[1]);
+        hypercertId = hypercertTypeId + 1;
         fundingToken = new MockERC20("Funding", "FUND");
-        hyperfundStorage = new HyperfundStorage(address(hypercertMinter), fractionHypercertId);
+        hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         implementation = new Hyperfund();
         bytes memory initData =
             abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
@@ -78,14 +78,14 @@ contract IntegrationTest is Test {
             fundingToken.transfer(address(hyperfund), 7500 * usdcDecimals); // fund hyperfund with 7500 usdc
             vm.stopPrank();
             for (uint256 j = 0; j < 3; j++) {
-                assertEq(hypercertMinter.ownerOf(fractionHypercertId + i * 3 + j + 1), contributors[j]);
-                assertEq(hypercertMinter.unitsOf(fractionHypercertId + i * 3 + j + 1), units[j]);
+                assertEq(hypercertMinter.ownerOf(hypercertId + i * 3 + j + 1), contributors[j]);
+                assertEq(hypercertMinter.unitsOf(hypercertId + i * 3 + j + 1), units[j]);
                 vm.startPrank(contributors[j]);
                 hypercertMinter.setApprovalForAll(address(hyperfund), true);
-                hyperfund.redeem(fractionHypercertId + i * 3 + j + 1, address(fundingToken));
+                hyperfund.redeem(hypercertId + i * 3 + j + 1, address(fundingToken));
                 vm.stopPrank();
-                assertEq(hypercertMinter.ownerOf(fractionHypercertId + i * 3 + j + 1), address(0));
-                assertEq(hypercertMinter.unitsOf(fractionHypercertId + i * 3 + j + 1), 0);
+                assertEq(hypercertMinter.ownerOf(hypercertId + i * 3 + j + 1), address(0));
+                assertEq(hypercertMinter.unitsOf(hypercertId + i * 3 + j + 1), 0);
                 assertEq(fundingToken.balanceOf(contributors[j]), 2500 * usdcDecimals * (i + 1));
             }
         }
