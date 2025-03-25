@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+
 import {IHypercertToken} from "./interfaces/IHypercertToken.sol";
+import {HyperfundStorage} from "./HyperfundStorage.sol";
 
 error NoUnitsInHypercert();
 error WrongBaseHypercert(uint256 baseHypercertId, uint256 expectedBaseHypercertId);
@@ -16,7 +19,7 @@ error NativeTokenTransferFailed();
 error IncorrectRewardAmount(uint256 actualRewardAmount, uint256 expectedRewardAmount);
 error NotBaseType();
 
-contract Hyperstaker is AccessControl, Pausable {
+contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     uint256 internal constant TYPE_MASK = type(uint256).max << 128;
 
     IHypercertToken public hypercertMinter;
@@ -31,6 +34,7 @@ contract Hyperstaker is AccessControl, Pausable {
     // Roles
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // Mapping of hypercert id to stake info
     mapping(uint256 => Stake) public stakes;
@@ -45,15 +49,31 @@ contract Hyperstaker is AccessControl, Pausable {
     event RewardClaimed(address indexed user, uint256 reward);
     event RewardSet(address indexed token, uint256 amount);
 
-    constructor(address _hypercertMinter, uint256 _baseHypercertId, address manager) {
-        require(_getBaseType(_baseHypercertId) == _baseHypercertId, NotBaseType());
-        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _grantRole(MANAGER_ROLE, manager);
-        hypercertMinter = IHypercertToken(_hypercertMinter);
-        baseHypercertId = _baseHypercertId;
-        totalUnits = hypercertMinter.unitsOf(baseHypercertId);
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initialize the contract, to be called by proxy
+    /// @notice NOTE: after deployment of proxy, the hypercert owner must approve the proxy contract to handle fractions
+    /// by calling hypercertMinter.setApprovalForAll(address(proxy), true)
+    /// @param _storage The immutable storage contract for this hyperstaker
+    /// @param _manager The address that will have the MANAGER_ROLE
+    function initialize(address _storage, address _manager) public initializer {
+        __AccessControl_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MANAGER_ROLE, _manager);
+
+        HyperfundStorage storage_ = HyperfundStorage(_storage);
+        hypercertMinter = IHypercertToken(storage_.hypercertMinter());
+        baseHypercertId = storage_.hypercertTypeId();
+        totalUnits = storage_.hypercertUnits();
         roundStartTime = block.timestamp;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
 
     function setReward(address _rewardToken, uint256 _rewardAmount) external payable onlyRole(MANAGER_ROLE) {
         totalRewards = _rewardAmount;
