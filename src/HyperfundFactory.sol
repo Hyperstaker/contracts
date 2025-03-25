@@ -68,7 +68,13 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         require(hyperstakers[hypercertId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertId + 1), NotOwnerOfHypercert());
 
-        address newHyperstaker = address(new Hyperstaker(hypercertMinter, hypercertId, manager));
+        HyperfundStorage hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertId);
+        Hyperstaker implementation = new Hyperstaker();
+        bytes memory initData =
+            abi.encodeWithSelector(Hyperstaker.initialize.selector, address(hyperfundStorage), manager);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+
+        address newHyperstaker = address(proxy);
         require(newHyperstaker != address(0), DeploymentFailed());
 
         hyperstakers[hypercertId] = true;
