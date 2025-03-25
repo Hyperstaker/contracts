@@ -5,7 +5,7 @@ import {Test, stdError} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Hyperfund} from "../src/Hyperfund.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {IHypercertToken} from "src/interfaces/IHypercertToken.sol";
+import {IHypercertToken} from "../src/interfaces/IHypercertToken.sol";
 import {HyperfundStorage} from "../src/HyperfundStorage.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
