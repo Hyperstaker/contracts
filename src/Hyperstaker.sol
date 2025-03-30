@@ -95,14 +95,14 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
 
         stakes[_hypercertId].stakingStartTime = block.timestamp;
         emit Staked(_hypercertId);
-        hypercertMinter.transferFrom(msg.sender, address(this), _hypercertId, units);
+        hypercertMinter.safeTransferFrom(msg.sender, address(this), _hypercertId, units, "");
     }
 
     function unstake(uint256 _hypercertId) external whenNotPaused {
         uint256 units = hypercertMinter.unitsOf(_hypercertId);
         delete stakes[_hypercertId].stakingStartTime;
         emit Unstaked(_hypercertId);
-        hypercertMinter.transferFrom(address(this), msg.sender, _hypercertId, units);
+        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, units, "");
     }
 
     function claimReward(uint256 _hypercertId) external whenNotPaused {
@@ -114,7 +114,9 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         stakes[_hypercertId].isClaimed = true;
         emit RewardClaimed(msg.sender, reward);
 
-        hypercertMinter.transferFrom(address(this), msg.sender, _hypercertId, hypercertMinter.unitsOf(_hypercertId));
+        hypercertMinter.safeTransferFrom(
+            address(this), msg.sender, _hypercertId, hypercertMinter.unitsOf(_hypercertId), ""
+        );
 
         if (rewardToken != address(0)) {
             require(IERC20(rewardToken).transfer(msg.sender, reward), RewardTransferFailed());
