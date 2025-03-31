@@ -92,15 +92,14 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     }
 
     function stake(uint256 _hypercertId) external whenNotPaused {
-        uint256 units = hypercertMinter.unitsOf(_hypercertId);
-        require(units > 0, NoUnitsInHypercert());
+        require(hypercertMinter.unitsOf(_hypercertId) != 0, NoUnitsInHypercert());
         uint256 hypercertTypeId_ = _getHypercertTypeId(_hypercertId);
         require(hypercertTypeId_ == hypercertTypeId, WrongHypercertType(hypercertTypeId_, hypercertTypeId));
 
         stakes[_hypercertId].stakingStartTime = block.timestamp;
         stakes[_hypercertId].staker = msg.sender;
         emit Staked(_hypercertId);
-        hypercertMinter.safeTransferFrom(msg.sender, address(this), _hypercertId, units, "");
+        hypercertMinter.safeTransferFrom(msg.sender, address(this), _hypercertId, 1, "");
     }
 
     function unstake(uint256 _hypercertId) external whenNotPaused {
@@ -109,9 +108,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         require(staker == msg.sender, NotStakerOfHypercert(staker));
         delete stakes[_hypercertId];
         emit Unstaked(_hypercertId);
-        hypercertMinter.safeTransferFrom(
-            address(this), msg.sender, _hypercertId, hypercertMinter.unitsOf(_hypercertId), ""
-        );
+        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
     }
 
     function claimReward(uint256 _hypercertId) external whenNotPaused {
@@ -124,9 +121,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         stakes[_hypercertId].isClaimed = true;
         emit RewardClaimed(_hypercertId, reward);
 
-        hypercertMinter.safeTransferFrom(
-            address(this), msg.sender, _hypercertId, hypercertMinter.unitsOf(_hypercertId), ""
-        );
+        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
 
         if (rewardToken != address(0)) {
             require(IERC20(rewardToken).transfer(msg.sender, reward), RewardTransferFailed());
@@ -139,8 +134,9 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     function calculateReward(uint256 _hypercertId) public view returns (uint256) {
         require(roundEndTime != 0, RoundNotSet());
         require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
-        uint256 stakeDuration = roundEndTime - stakes[_hypercertId].stakingStartTime;
-        return totalRewards * (hypercertMinter.unitsOf(_hypercertId) / totalUnits) * (stakeDuration / roundDuration);
+        uint256 stakeStartTime = stakes[_hypercertId].stakingStartTime;
+        uint256 stakeDuration = stakeStartTime > roundEndTime ? 0 : roundEndTime - stakeStartTime;
+        return totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * roundDuration);
     }
 
     function pause() external onlyRole(PAUSER_ROLE) {
@@ -157,5 +153,9 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
 
     function _getHypercertTypeId(uint256 _hypercertId) internal pure returns (uint256) {
         return _hypercertId & TYPE_MASK;
+    }
+
+    function onERC1155Received(address, address, uint256, uint256, bytes memory) public pure returns (bytes4) {
+        return this.onERC1155Received.selector;
     }
 }
