@@ -103,10 +103,11 @@ contract HyperfundFactoryTest is Test {
         // with the other parameters we expect
         emit HyperfundFactory.HyperfundCreated(address(0), manager, hypercertId);
 
-        hyperfundFactory.createHyperfund(hypercertId, manager);
+        address hyperfundAddress = hyperfundFactory.createHyperfund(hypercertId, manager);
 
         bool createdHyperfund = hyperfundFactory.hyperfunds(hypercertId);
         assertTrue(createdHyperfund != false, "Hyperfund should be created and mapped correctly");
+        assertEq(Hyperfund(hyperfundAddress).hypercertTypeId(), hypercertId);
     }
 
     function test_CreateHyperstaker() public {
@@ -116,10 +117,11 @@ contract HyperfundFactoryTest is Test {
         // with the other parameters we expect
         emit HyperfundFactory.HyperstakerCreated(address(0), manager, hypercertId);
 
-        hyperfundFactory.createHyperstaker(hypercertId, manager);
+        address hyperstakerAddress = hyperfundFactory.createHyperstaker(hypercertId, manager);
 
         bool createdHyperstaker = hyperfundFactory.hyperstakers(hypercertId);
         assertTrue(createdHyperstaker != false, "Hyperstaker should be created and mapped correctly");
+        assertEq(Hyperstaker(hyperstakerAddress).hypercertTypeId(), hypercertId);
     }
 
     function test_RevertWhen_RedeployingHyperfundWithSameHypercertId() public {
@@ -206,6 +208,14 @@ contract HyperfundFactoryTest is Test {
         vm.prank(makeAddr("user2"));
         vm.expectRevert(HyperfundFactory.NotOwnerOfHypercert.selector);
         hyperfundFactory.createHyperstaker(hypercertId, manager);
+    }
+
+    function test_CreateProject() public {
+        (address hyperfundAddress, address hyperstakerAddress) = hyperfundFactory.createProject(hypercertId, manager);
+        assertTrue(hyperfundFactory.hyperfunds(hypercertId));
+        assertTrue(hyperfundFactory.hyperstakers(hypercertId));
+        assertEq(Hyperfund(hyperfundAddress).hypercertTypeId(), hypercertId);
+        assertEq(Hyperstaker(hyperstakerAddress).hypercertTypeId(), hypercertId);
     }
 
     function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {

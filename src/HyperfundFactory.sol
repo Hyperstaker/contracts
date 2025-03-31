@@ -47,10 +47,10 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         require(hyperfunds[hypercertTypeId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
 
-        HyperfundStorage hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId + 1);
+        HyperfundStorage hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         Hyperfund implementation = new Hyperfund();
         bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager, 1);
+            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         IHypercertToken(hypercertMinter).setApprovalForAll(address(proxy), true);
@@ -80,5 +80,32 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         hyperstakers[hypercertTypeId] = true;
         emit HyperstakerCreated(newHyperstaker, manager, hypercertTypeId);
         return newHyperstaker;
+    }
+
+    function createProject(uint256 hypercertTypeId, address manager)
+        external
+        returns (address hyperfund, address hyperstaker)
+    {
+        require(manager != address(0), InvalidAddress());
+        require(hyperfunds[hypercertTypeId] == false, AlreadyDeployed());
+        require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
+
+        HyperfundStorage hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
+        bytes memory initData =
+            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
+
+        Hyperfund hyperfundImplementation = new Hyperfund();
+        ERC1967Proxy hyperfundProxy = new ERC1967Proxy(address(hyperfundImplementation), initData);
+        hyperfund = address(hyperfundProxy);
+        require(hyperfund != address(0), DeploymentFailed());
+        hyperfunds[hypercertTypeId] = true;
+        emit HyperfundCreated(hyperfund, manager, hypercertTypeId);
+
+        Hyperstaker hyperstakerImplementation = new Hyperstaker();
+        ERC1967Proxy proxy = new ERC1967Proxy(address(hyperstakerImplementation), initData);
+        hyperstaker = address(proxy);
+        require(hyperstaker != address(0), DeploymentFailed());
+        hyperstakers[hypercertTypeId] = true;
+        emit HyperstakerCreated(hyperstaker, manager, hypercertTypeId);
     }
 }
