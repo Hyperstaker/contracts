@@ -12,7 +12,6 @@ import {HyperfundStorage} from "./HyperfundStorage.sol";
 error NoUnitsInHypercert();
 error WrongHypercertType(uint256 hypercertTypeId, uint256 expectedHypercertTypeId);
 error NoRewardAvailable();
-error AlreadyClaimed();
 error NotStaked();
 error RewardTransferFailed();
 error NativeTokenTransferFailed();
@@ -41,7 +40,6 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     mapping(uint256 => Stake) public stakes;
 
     struct Stake {
-        bool isClaimed;
         uint256 stakingStartTime;
         address staker;
     }
@@ -112,13 +110,13 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     }
 
     function claimReward(uint256 _hypercertId) external whenNotPaused {
-        uint256 reward = calculateReward(_hypercertId);
-        require(reward != 0, NoRewardAvailable());
-        require(!stakes[_hypercertId].isClaimed, AlreadyClaimed());
+        require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
         address staker = stakes[_hypercertId].staker;
         require(staker == msg.sender, NotStakerOfHypercert(staker));
+        uint256 reward = calculateReward(_hypercertId);
+        require(reward != 0, NoRewardAvailable());
 
-        stakes[_hypercertId].isClaimed = true;
+        delete stakes[_hypercertId];
         emit RewardClaimed(_hypercertId, reward);
 
         hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");

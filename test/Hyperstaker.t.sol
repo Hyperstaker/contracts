@@ -116,7 +116,6 @@ contract HyperstakerTest is Test {
 
         Hyperstaker.Stake memory stakeInfo = hyperstaker.getStake(stakerHypercertId);
         assertEq(stakeInfo.staker, staker);
-        assertEq(stakeInfo.isClaimed, false);
         assertEq(stakeInfo.stakingStartTime, block.timestamp);
         assertEq(hypercertMinter.unitsOf(stakerHypercertId), stakeAmount);
         assertEq(hypercertMinter.ownerOf(stakerHypercertId), address(hyperstaker));
@@ -232,7 +231,7 @@ contract HyperstakerTest is Test {
         hyperstaker.claimReward(stakerHypercertId);
         vm.stopPrank();
         Hyperstaker.Stake memory stakeInfo = hyperstaker.getStake(stakerHypercertId);
-        assertEq(stakeInfo.isClaimed, true);
+        assertEq(stakeInfo.stakingStartTime, 0);
         assertEq(hypercertMinter.ownerOf(stakerHypercertId), staker);
     }
 
@@ -255,10 +254,13 @@ contract HyperstakerTest is Test {
     }
 
     function test_RevertWhen_ClaimRewardAlreadyClaimed() public {
-        test_ClaimReward_Eth();
-        vm.prank(staker);
-        vm.expectRevert(AlreadyClaimed.selector);
+        _setupStake();
+        _setupRewardEth();
+        vm.startPrank(staker);
         hyperstaker.claimReward(stakerHypercertId);
+        vm.expectRevert(NotStaked.selector);
+        hyperstaker.claimReward(stakerHypercertId);
+        vm.stopPrank();
     }
 
     function test_RevertWhen_ClaimRewardRoundNotSet() public {
