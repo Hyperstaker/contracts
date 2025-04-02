@@ -18,6 +18,7 @@ error NativeTokenTransferFailed();
 error IncorrectRewardAmount(uint256 actualRewardAmount, uint256 expectedRewardAmount);
 error NotStakerOfHypercert(address staker);
 error RoundNotSet();
+error AlreadyClaimed();
 
 contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     uint256 internal constant TYPE_MASK = type(uint256).max << 128;
@@ -25,11 +26,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     IHypercertToken public hypercertMinter;
     uint256 public hypercertTypeId;
     uint256 public totalUnits;
-    address public rewardToken;
-    uint256 public totalRewards;
-    uint256 public roundStartTime;
-    uint256 public roundEndTime;
-    uint256 public roundDuration;
+    Round[] public rounds;
 
     // Roles
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
@@ -42,6 +39,15 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     struct Stake {
         uint256 stakingStartTime;
         address staker;
+        uint256 claimed; // bitmap of claimed rounds, limits Hyperstaker to 256 rounds
+    }
+
+    struct Round {
+        uint256 startTime;
+        uint256 endTime;
+        uint256 duration;
+        uint256 totalRewards;
+        address rewardToken;
     }
 
     event Staked(uint256 indexed hypercertId);
@@ -70,22 +76,28 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         hypercertMinter = IHypercertToken(storage_.hypercertMinter());
         hypercertTypeId = storage_.hypercertTypeId();
         totalUnits = storage_.hypercertUnits();
-        roundStartTime = block.timestamp;
+        Round memory round;
+        round.startTime = block.timestamp;
+        rounds.push(round);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
 
     function setReward(address _rewardToken, uint256 _rewardAmount) external payable onlyRole(MANAGER_ROLE) {
-        totalRewards = _rewardAmount;
-        rewardToken = _rewardToken;
-        roundEndTime = block.timestamp;
-        roundDuration = roundEndTime - roundStartTime;
+        Round storage currentRound = rounds[rounds.length - 1];
+        currentRound.totalRewards = _rewardAmount;
+        currentRound.rewardToken = _rewardToken;
+        currentRound.endTime = block.timestamp;
+        currentRound.duration = currentRound.endTime - currentRound.startTime;
         if (_rewardToken != address(0)) {
             bool success = IERC20(_rewardToken).transferFrom(msg.sender, address(this), _rewardAmount);
             require(success, RewardTransferFailed());
         } else {
             require(msg.value == _rewardAmount, IncorrectRewardAmount(msg.value, _rewardAmount));
         }
+        Round memory nextRound;
+        nextRound.startTime = block.timestamp;
+        rounds.push(nextRound);
         emit RewardSet(_rewardToken, _rewardAmount);
     }
 
@@ -109,18 +121,18 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
     }
 
-    function claimReward(uint256 _hypercertId) external whenNotPaused {
+    function claimReward(uint256 _hypercertId, uint256 _roundId) external whenNotPaused {
         require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
         address staker = stakes[_hypercertId].staker;
         require(staker == msg.sender, NotStakerOfHypercert(staker));
-        uint256 reward = calculateReward(_hypercertId);
+        require(!isRoundClaimed(_hypercertId, _roundId), AlreadyClaimed());
+        uint256 reward = calculateReward(_hypercertId, _roundId);
         require(reward != 0, NoRewardAvailable());
 
-        delete stakes[_hypercertId];
+        _setRoundClaimed(_hypercertId, _roundId);
         emit RewardClaimed(_hypercertId, reward);
 
-        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
-
+        address rewardToken = rounds[_roundId].rewardToken;
         if (rewardToken != address(0)) {
             require(IERC20(rewardToken).transfer(msg.sender, reward), RewardTransferFailed());
         } else {
@@ -129,12 +141,15 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         }
     }
 
-    function calculateReward(uint256 _hypercertId) public view returns (uint256) {
-        require(roundEndTime != 0, RoundNotSet());
-        require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
+    function calculateReward(uint256 _hypercertId, uint256 _roundId) public view returns (uint256) {
+        Round memory round = rounds[_roundId];
+        require(round.endTime != 0, RoundNotSet());
         uint256 stakeStartTime = stakes[_hypercertId].stakingStartTime;
-        uint256 stakeDuration = stakeStartTime > roundEndTime ? 0 : roundEndTime - stakeStartTime;
-        return totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * roundDuration);
+        require(stakeStartTime != 0, NotStaked());
+        stakeStartTime = stakeStartTime < round.startTime ? round.startTime : stakeStartTime;
+        uint256 stakeDuration = stakeStartTime > round.endTime ? 0 : round.endTime - stakeStartTime;
+        return
+            round.totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * round.duration);
     }
 
     function pause() external onlyRole(PAUSER_ROLE) {
@@ -145,12 +160,24 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         _unpause();
     }
 
-    function getStake(uint256 _hypercertId) external view returns (Stake memory) {
+    function getStakeInfo(uint256 _hypercertId) external view returns (Stake memory) {
         return stakes[_hypercertId];
+    }
+
+    function getRoundInfo(uint256 _roundId) external view returns (Round memory) {
+        return rounds[_roundId];
     }
 
     function _getHypercertTypeId(uint256 _hypercertId) internal pure returns (uint256) {
         return _hypercertId & TYPE_MASK;
+    }
+
+    function isRoundClaimed(uint256 _hypercertId, uint256 _roundId) public view returns (bool) {
+        return (stakes[_hypercertId].claimed & (1 << _roundId)) != 0;
+    }
+
+    function _setRoundClaimed(uint256 _hypercertId, uint256 _roundId) internal {
+        stakes[_hypercertId].claimed |= (1 << _roundId);
     }
 
     function onERC1155Received(address, address, uint256, uint256, bytes memory) public pure returns (bytes4) {

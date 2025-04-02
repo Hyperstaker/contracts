@@ -63,7 +63,7 @@ contract HyperstakerTest is Test {
         assertEq(hyperstaker.hypercertTypeId(), hypercertTypeId);
         assertEq(address(hyperstaker.hypercertMinter()), address(hypercertMinter));
         assertEq(hyperstaker.totalUnits(), totalUnits);
-        assertEq(hyperstaker.roundStartTime(), roundStartTime);
+        assertEq(hyperstaker.getRoundInfo(0).startTime, roundStartTime);
     }
 
     function test_SetReward_ERC20() public {
@@ -77,10 +77,13 @@ contract HyperstakerTest is Test {
         hyperstaker.setReward(address(rewardToken), rewardAmount);
         vm.stopPrank();
 
-        assertEq(hyperstaker.rewardToken(), address(rewardToken));
-        assertEq(hyperstaker.totalRewards(), rewardAmount);
-        assertEq(hyperstaker.roundEndTime(), block.timestamp);
-        assertEq(hyperstaker.roundDuration(), hyperstaker.roundEndTime() - hyperstaker.roundStartTime());
+        assertEq(hyperstaker.getRoundInfo(0).rewardToken, address(rewardToken));
+        assertEq(hyperstaker.getRoundInfo(0).totalRewards, rewardAmount);
+        assertEq(hyperstaker.getRoundInfo(0).endTime, block.timestamp);
+        assertEq(
+            hyperstaker.getRoundInfo(0).duration,
+            hyperstaker.getRoundInfo(0).endTime - hyperstaker.getRoundInfo(0).startTime
+        );
         assertEq(rewardToken.balanceOf(address(hyperstaker)), rewardAmount);
     }
 
@@ -92,10 +95,13 @@ contract HyperstakerTest is Test {
         emit Hyperstaker.RewardSet(address(0), rewardAmount);
         hyperstaker.setReward{value: rewardAmount}(address(0), rewardAmount);
 
-        assertEq(hyperstaker.rewardToken(), address(0));
-        assertEq(hyperstaker.totalRewards(), rewardAmount);
-        assertEq(hyperstaker.roundEndTime(), block.timestamp);
-        assertEq(hyperstaker.roundDuration(), hyperstaker.roundEndTime() - hyperstaker.roundStartTime());
+        assertEq(hyperstaker.getRoundInfo(0).rewardToken, address(0));
+        assertEq(hyperstaker.getRoundInfo(0).totalRewards, rewardAmount);
+        assertEq(hyperstaker.getRoundInfo(0).endTime, block.timestamp);
+        assertEq(
+            hyperstaker.getRoundInfo(0).duration,
+            hyperstaker.getRoundInfo(0).endTime - hyperstaker.getRoundInfo(0).startTime
+        );
         assertEq(address(hyperstaker).balance, rewardAmount);
     }
 
@@ -114,7 +120,7 @@ contract HyperstakerTest is Test {
         hyperstaker.stake(stakerHypercertId);
         vm.stopPrank();
 
-        Hyperstaker.Stake memory stakeInfo = hyperstaker.getStake(stakerHypercertId);
+        Hyperstaker.Stake memory stakeInfo = hyperstaker.getStakeInfo(stakerHypercertId);
         assertEq(stakeInfo.staker, staker);
         assertEq(stakeInfo.stakingStartTime, block.timestamp);
         assertEq(hypercertMinter.unitsOf(stakerHypercertId), stakeAmount);
@@ -159,9 +165,10 @@ contract HyperstakerTest is Test {
         emit Hyperstaker.Unstaked(stakerHypercertId);
         hyperstaker.unstake(stakerHypercertId);
         vm.stopPrank();
-        Hyperstaker.Stake memory stakeInfo = hyperstaker.getStake(stakerHypercertId);
+        Hyperstaker.Stake memory stakeInfo = hyperstaker.getStakeInfo(stakerHypercertId);
         assertEq(stakeInfo.staker, address(0));
         assertEq(stakeInfo.stakingStartTime, 0);
+        assertEq(hypercertMinter.ownerOf(stakerHypercertId), staker);
     }
 
     function test_RevertWhen_UnstakeNotStaked() public {
@@ -197,42 +204,44 @@ contract HyperstakerTest is Test {
         _setupStake();
         _setupRewardEth();
         vm.warp(block.timestamp + 60 * 60 * 24);
-        uint256 expectedReward = hyperstaker.calculateReward(stakerHypercertId);
+        uint256 expectedReward = hyperstaker.calculateReward(stakerHypercertId, 0);
         assertTrue(expectedReward > 0);
-        Hyperstaker.Stake memory stakeInfo = hyperstaker.getStake(stakerHypercertId);
-        uint256 stakeDuration = hyperstaker.roundEndTime() - stakeInfo.stakingStartTime;
-        assertEq(expectedReward, rewardAmount * stakeAmount * stakeDuration / totalUnits / hyperstaker.roundDuration());
+        Hyperstaker.Stake memory stakeInfo = hyperstaker.getStakeInfo(stakerHypercertId);
+        uint256 stakeDuration = hyperstaker.getRoundInfo(0).endTime - stakeInfo.stakingStartTime;
+        assertEq(
+            expectedReward,
+            rewardAmount * stakeAmount * stakeDuration / totalUnits / hyperstaker.getRoundInfo(0).duration
+        );
     }
 
     function test_CalculateReward_0WhenStakeAfterRoundEnd() public {
         _setupRewardEth();
         _setupStake();
 
-        assertEq(hyperstaker.calculateReward(stakerHypercertId), 0);
+        assertEq(hyperstaker.calculateReward(stakerHypercertId, 0), 0);
     }
 
     function test_RevertWhen_CalculateRewardNoReward() public {
         _setupStake();
         vm.expectRevert(RoundNotSet.selector);
-        hyperstaker.calculateReward(stakerHypercertId);
+        hyperstaker.calculateReward(stakerHypercertId, 0);
     }
 
     function test_RevertWhen_CalculateRewardNotStaked() public {
         _setupRewardEth();
         vm.expectRevert(NotStaked.selector);
-        hyperstaker.calculateReward(stakerHypercertId);
+        hyperstaker.calculateReward(stakerHypercertId, 0);
     }
 
     function _checkClaimReward() internal returns (uint256 expectedReward) {
-        expectedReward = hyperstaker.calculateReward(stakerHypercertId);
+        expectedReward = hyperstaker.calculateReward(stakerHypercertId, 0);
         vm.startPrank(staker);
         vm.expectEmit(true, false, false, true);
         emit Hyperstaker.RewardClaimed(stakerHypercertId, expectedReward);
-        hyperstaker.claimReward(stakerHypercertId);
+        hyperstaker.claimReward(stakerHypercertId, 0);
         vm.stopPrank();
-        Hyperstaker.Stake memory stakeInfo = hyperstaker.getStake(stakerHypercertId);
-        assertEq(stakeInfo.stakingStartTime, 0);
-        assertEq(hypercertMinter.ownerOf(stakerHypercertId), staker);
+        assertEq(hyperstaker.isRoundClaimed(stakerHypercertId, 0), true);
+        assertEq(hypercertMinter.ownerOf(stakerHypercertId), address(hyperstaker));
     }
 
     function test_ClaimReward_Eth() public {
@@ -257,9 +266,9 @@ contract HyperstakerTest is Test {
         _setupStake();
         _setupRewardEth();
         vm.startPrank(staker);
-        hyperstaker.claimReward(stakerHypercertId);
-        vm.expectRevert(NotStaked.selector);
-        hyperstaker.claimReward(stakerHypercertId);
+        hyperstaker.claimReward(stakerHypercertId, 0);
+        vm.expectRevert(AlreadyClaimed.selector);
+        hyperstaker.claimReward(stakerHypercertId, 0);
         vm.stopPrank();
     }
 
@@ -267,7 +276,7 @@ contract HyperstakerTest is Test {
         _setupStake();
         vm.prank(staker);
         vm.expectRevert(RoundNotSet.selector);
-        hyperstaker.claimReward(stakerHypercertId);
+        hyperstaker.claimReward(stakerHypercertId, 0);
     }
 
     function test_RevertWhen_ClaimRewardNotStaker() public {
@@ -275,16 +284,16 @@ contract HyperstakerTest is Test {
         _setupRewardEth();
         vm.prank(staker2);
         vm.expectRevert(abi.encodeWithSelector(NotStakerOfHypercert.selector, staker));
-        hyperstaker.claimReward(stakerHypercertId);
+        hyperstaker.claimReward(stakerHypercertId, 0);
     }
 
     function test_RevertWhen_ClaimRewardNoReward() public {
         _setupRewardEth();
         _setupStake();
-        assertEq(0, hyperstaker.calculateReward(stakerHypercertId));
+        assertEq(0, hyperstaker.calculateReward(stakerHypercertId, 0));
         vm.prank(staker);
         vm.expectRevert(NoRewardAvailable.selector);
-        hyperstaker.claimReward(stakerHypercertId);
+        hyperstaker.claimReward(stakerHypercertId, 0);
     }
 
     function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
