@@ -339,7 +339,7 @@ contract HyperfundTest is Test {
         fundingToken.approve(address(hyperfund), amount);
         hyperfund.fund(address(fundingToken), amount);
         hypercertMinter.setApprovalForAll(address(hyperfund), true);
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(Hyperfund.NotAllowlisted.selector);
         hyperfund.redeem(fractionHypercertId + 1, address(fundingToken));
         vm.stopPrank();
     }
@@ -357,7 +357,7 @@ contract HyperfundTest is Test {
         hyperfund.fund(address(fundingToken), amount);
         hypercertMinter.setApprovalForAll(address(hyperfund), true);
         hyperfund.redeem(fractionHypercertId + 1, address(fundingToken));
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(Hyperfund.NotAllowlisted.selector);
         hyperfund.redeem(fractionHypercertId + 2, address(fundingToken));
         vm.stopPrank();
     }

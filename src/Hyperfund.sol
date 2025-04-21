@@ -48,6 +48,7 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     error NotFractionOfThisHypercert(uint256 rightHypercertId);
     error Unauthorized();
     error ArrayLengthsMismatch();
+    error NotAllowlisted();
 
     constructor() {
         _disableInitializers();
@@ -151,6 +152,7 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// @param _fractionId id of the hypercert fraction
     /// @param _token address of the token to redeem, must be allowlisted. address(0) for native token
     function redeem(uint256 _fractionId, address _token) external whenNotPaused {
+        require(nonfinancialContributions[msg.sender] != 0, NotAllowlisted());
         require(hypercertMinter.ownerOf(_fractionId) == msg.sender, Unauthorized());
         require(_isFraction(_fractionId), NotFractionOfThisHypercert(hypercertTypeId));
         uint256 units = hypercertMinter.unitsOf(_fractionId);
@@ -162,7 +164,7 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
             require(IERC20(_token).transfer(msg.sender, tokenAmount), TransferFailed());
         }
         hypercertMinter.burnFraction(msg.sender, _fractionId); // sets the units of the fraction to 0
-        nonfinancialContributions[msg.sender] -= units; // will underflow if the sender is not allowlisted
+        nonfinancialContributions[msg.sender] -= units;
         emit FractionRedeemed(_fractionId, _token, tokenAmount);
     }
 
