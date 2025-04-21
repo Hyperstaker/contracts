@@ -6,7 +6,6 @@ import {Vm} from "forge-std/Vm.sol";
 import "../src/Hyperstaker.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {IHypercertToken} from "../src/interfaces/IHypercertToken.sol";
-import {HyperfundStorage} from "../src/HyperfundStorage.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract HyperstakerTest is Test {
@@ -14,7 +13,6 @@ contract HyperstakerTest is Test {
     ERC1967Proxy public proxy;
     Hyperstaker public implementation;
     IHypercertToken public hypercertMinter;
-    HyperfundStorage public hyperstakerStorage;
     MockERC20 public rewardToken;
     uint256 public hypercertTypeId;
     uint256 public fractionHypercertId;
@@ -43,10 +41,9 @@ contract HyperstakerTest is Test {
         roundStartTime = block.timestamp;
         rewardToken = new MockERC20("Reward", "RWD");
 
-        hyperstakerStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         implementation = new Hyperstaker();
         bytes memory initData =
-            abi.encodeWithSelector(Hyperstaker.initialize.selector, address(hyperstakerStorage), manager);
+            abi.encodeWithSelector(Hyperstaker.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
 
         proxy = new ERC1967Proxy(address(implementation), initData);
         hypercertMinter.setApprovalForAll(address(proxy), true);

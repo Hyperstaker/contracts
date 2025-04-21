@@ -7,7 +7,6 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IHypercertToken} from "./interfaces/IHypercertToken.sol";
-import {HyperfundStorage} from "./HyperfundStorage.sol";
 
 error NoUnitsInHypercert();
 error WrongHypercertType(uint256 hypercertTypeId, uint256 expectedHypercertTypeId);
@@ -62,9 +61,10 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     /// @notice Initialize the contract, to be called by proxy
     /// @notice NOTE: after deployment of proxy, the hypercert owner must approve the proxy contract to handle fractions
     /// by calling hypercertMinter.setApprovalForAll(address(proxy), true)
-    /// @param _storage The immutable storage contract for this hyperstaker
+    /// @param _hypercertMinter The address of the hypercert minter contract
+    /// @param _hypercertTypeId The id of the hypercert type
     /// @param _manager The address that will have the MANAGER_ROLE
-    function initialize(address _storage, address _manager) public initializer {
+    function initialize(address _hypercertMinter, uint256 _hypercertTypeId, address _manager) public initializer {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
@@ -72,10 +72,9 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MANAGER_ROLE, _manager);
 
-        HyperfundStorage storage_ = HyperfundStorage(_storage);
-        hypercertMinter = IHypercertToken(storage_.hypercertMinter());
-        hypercertTypeId = storage_.hypercertTypeId();
-        totalUnits = storage_.hypercertUnits();
+        hypercertMinter = IHypercertToken(_hypercertMinter);
+        hypercertTypeId = _hypercertTypeId;
+        totalUnits = hypercertMinter.unitsOf(_hypercertTypeId + 1);
         Round memory round;
         round.startTime = block.timestamp;
         rounds.push(round);

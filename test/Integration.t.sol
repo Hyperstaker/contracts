@@ -6,7 +6,6 @@ import {Vm} from "forge-std/Vm.sol";
 import {Hyperfund} from "../src/Hyperfund.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {IHypercertToken} from "src/interfaces/IHypercertToken.sol";
-import {HyperfundStorage} from "../src/HyperfundStorage.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -15,7 +14,6 @@ contract IntegrationTest is Test {
     ERC1967Proxy public proxy;
     Hyperfund public implementation;
     IHypercertToken public hypercertMinter;
-    HyperfundStorage public hyperfundStorage;
     MockERC20 public fundingToken;
     uint256 public hypercertTypeId;
     uint256 public hypercertId;
@@ -39,10 +37,9 @@ contract IntegrationTest is Test {
         hypercertTypeId = uint256(entries[0].topics[1]);
         hypercertId = hypercertTypeId + 1;
         fundingToken = new MockERC20("Funding", "FUND");
-        hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         implementation = new Hyperfund();
         bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
+            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
 
         proxy = new ERC1967Proxy(address(implementation), initData);
         hypercertMinter.setApprovalForAll(address(proxy), true);

@@ -7,7 +7,6 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IHypercertToken} from "./interfaces/IHypercertToken.sol";
-import {HyperfundStorage} from "./HyperfundStorage.sol";
 
 contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     // immutable values that are read from the HyperfundStorage
@@ -57,9 +56,10 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// @notice Initialize the contract, to be called by proxy
     /// @notice NOTE: after deployment of proxy, the hypercert owner must approve the proxy contract to split and burn fractions
     /// by calling hypercertMinter.setApprovalForAll(address(proxy), true)
-    /// @param _storage The immutable storage contract for this hyperfund
+    /// @param _hypercertMinter The address of the hypercert minter contract
+    /// @param _hypercertTypeId The id of the hypercert type
     /// @param _manager The address that will have the MANAGER_ROLE in the new Hyperfund, pausers and upgraders can be added later
-    function initialize(address _storage, address _manager) public initializer {
+    function initialize(address _hypercertMinter, uint256 _hypercertTypeId, address _manager) public initializer {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
@@ -67,11 +67,10 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MANAGER_ROLE, _manager);
 
-        HyperfundStorage storage_ = HyperfundStorage(_storage);
-        hypercertMinter = IHypercertToken(storage_.hypercertMinter());
-        hypercertTypeId = storage_.hypercertTypeId();
+        hypercertMinter = IHypercertToken(_hypercertMinter);
+        hypercertTypeId = _hypercertTypeId;
         hypercertId = hypercertTypeId + 1;
-        hypercertUnits = storage_.hypercertUnits();
+        hypercertUnits = hypercertMinter.unitsOf(hypercertId);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
