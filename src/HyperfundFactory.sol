@@ -47,10 +47,9 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         require(hyperfunds[hypercertTypeId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
 
-        HyperfundStorage hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         Hyperfund implementation = new Hyperfund();
         bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
+            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         IHypercertToken(hypercertMinter).setApprovalForAll(address(proxy), true);
@@ -68,10 +67,9 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         require(hyperstakers[hypercertTypeId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
 
-        HyperfundStorage hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         Hyperstaker implementation = new Hyperstaker();
         bytes memory initData =
-            abi.encodeWithSelector(Hyperstaker.initialize.selector, address(hyperfundStorage), manager);
+            abi.encodeWithSelector(Hyperstaker.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
 
         address newHyperstaker = address(proxy);
@@ -90,9 +88,8 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         require(hyperfunds[hypercertTypeId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
 
-        HyperfundStorage hyperfundStorage = new HyperfundStorage(address(hypercertMinter), hypercertTypeId);
         bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hyperfundStorage), manager);
+            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
 
         Hyperfund hyperfundImplementation = new Hyperfund();
         ERC1967Proxy hyperfundProxy = new ERC1967Proxy(address(hyperfundImplementation), initData);
