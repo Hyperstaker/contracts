@@ -101,9 +101,9 @@ contract HyperfundFactoryTest is Test {
         vm.expectEmit(false, true, false, true);
         // We can't know the hyperfund address beforehand, but we can emit a dummy event
         // with the other parameters we expect
-        emit HyperfundFactory.HyperfundCreated(address(0), manager, hypercertId);
+        emit HyperfundFactory.HyperfundCreated(address(0), hypercertId, manager, manager, manager, manager);
 
-        address hyperfundAddress = hyperfundFactory.createHyperfund(hypercertId, manager);
+        address hyperfundAddress = hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
 
         bool createdHyperfund = hyperfundFactory.hyperfunds(hypercertId);
         assertTrue(createdHyperfund != false, "Hyperfund should be created and mapped correctly");
@@ -115,9 +115,9 @@ contract HyperfundFactoryTest is Test {
         vm.expectEmit(false, true, false, true);
         // We can't know the hyperfund address beforehand, but we can emit a dummy event
         // with the other parameters we expect
-        emit HyperfundFactory.HyperstakerCreated(address(0), manager, hypercertId);
+        emit HyperfundFactory.HyperstakerCreated(address(0), hypercertId, manager, manager, manager, manager);
 
-        address hyperstakerAddress = hyperfundFactory.createHyperstaker(hypercertId, manager);
+        address hyperstakerAddress = hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
 
         bool createdHyperstaker = hyperfundFactory.hyperstakers(hypercertId);
         assertTrue(createdHyperstaker != false, "Hyperstaker should be created and mapped correctly");
@@ -125,27 +125,27 @@ contract HyperfundFactoryTest is Test {
     }
 
     function test_RevertWhen_RedeployingHyperfundWithSameHypercertId() public {
-        hyperfundFactory.createHyperfund(hypercertId, manager);
+        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
 
         vm.expectRevert(HyperfundFactory.AlreadyDeployed.selector);
-        hyperfundFactory.createHyperfund(hypercertId, manager);
+        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
     }
 
     function test_RevertWhen_RedeployingHyperStakerWithSameHypercertId() public {
-        hyperfundFactory.createHyperstaker(hypercertId, manager);
+        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
 
         vm.expectRevert(HyperfundFactory.AlreadyDeployed.selector);
-        hyperfundFactory.createHyperstaker(hypercertId, manager);
+        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
     }
 
     function test_RevertWhen_CreateHyperfundZeroManager() public {
         vm.expectRevert(HyperfundFactory.InvalidAddress.selector);
-        hyperfundFactory.createHyperfund(hypercertId, address(0));
+        hyperfundFactory.createHyperfund(hypercertId, address(0), address(0), address(0), address(0));
     }
 
     function test_RevertWhen_CreateHyperstakerZeroManager() public {
         vm.expectRevert(HyperfundFactory.InvalidAddress.selector);
-        hyperfundFactory.createHyperstaker(hypercertId, address(0));
+        hyperfundFactory.createHyperstaker(hypercertId, address(0), address(0), address(0), address(0));
     }
 
     function test_RevertWhen_FailedHyperfundDeployment() public {
@@ -170,7 +170,7 @@ contract HyperfundFactoryTest is Test {
         HyperfundFactory factory = HyperfundFactory(address(proxy));
 
         vm.expectRevert();
-        factory.createHyperfund(hypercertId, manager);
+        factory.createHyperfund(hypercertId, manager, manager, manager, manager);
     }
 
     function test_RevertWhen_FailedHyperstakerDeployment() public {
@@ -195,23 +195,24 @@ contract HyperfundFactoryTest is Test {
         HyperfundFactory factory = HyperfundFactory(address(proxy));
 
         vm.expectRevert();
-        factory.createHyperstaker(hypercertId, manager);
+        factory.createHyperstaker(hypercertId, manager, manager, manager, manager);
     }
 
     function test_RevertWhen_HyperfundCreatorNotOwnerOfHypercert() public {
         vm.prank(makeAddr("user2"));
         vm.expectRevert(HyperfundFactory.NotOwnerOfHypercert.selector);
-        hyperfundFactory.createHyperfund(hypercertId, manager);
+        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
     }
 
     function test_RevertWhen_HyperstakerCreatorNotOwnerOfHypercert() public {
         vm.prank(makeAddr("user2"));
         vm.expectRevert(HyperfundFactory.NotOwnerOfHypercert.selector);
-        hyperfundFactory.createHyperstaker(hypercertId, manager);
+        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
     }
 
     function test_CreateProject() public {
-        (address hyperfundAddress, address hyperstakerAddress) = hyperfundFactory.createProject(hypercertId, manager);
+        (address hyperfundAddress, address hyperstakerAddress) =
+            hyperfundFactory.createProject(hypercertId, manager, manager, manager, manager);
         assertTrue(hyperfundFactory.hyperfunds(hypercertId));
         assertTrue(hyperfundFactory.hyperstakers(hypercertId));
         assertEq(Hyperfund(hyperfundAddress).hypercertTypeId(), hypercertId);

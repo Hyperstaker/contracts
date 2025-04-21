@@ -38,8 +38,9 @@ contract IntegrationTest is Test {
         hypercertId = hypercertTypeId + 1;
         fundingToken = new MockERC20("Funding", "FUND");
         implementation = new Hyperfund();
-        bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
+        bytes memory initData = abi.encodeWithSelector(
+            Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, manager, manager, manager, manager
+        );
 
         proxy = new ERC1967Proxy(address(implementation), initData);
         hypercertMinter.setApprovalForAll(address(proxy), true);
