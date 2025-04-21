@@ -59,14 +59,26 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// by calling hypercertMinter.setApprovalForAll(address(proxy), true)
     /// @param _hypercertMinter The address of the hypercert minter contract
     /// @param _hypercertTypeId The id of the hypercert type
-    /// @param _manager The address that will have the MANAGER_ROLE in the new Hyperfund, pausers and upgraders can be added later
-    function initialize(address _hypercertMinter, uint256 _hypercertTypeId, address _manager) public initializer {
+    /// @param _admin The address that will have the DEFAULT_ADMIN_ROLE
+    /// @param _manager The address that will have the MANAGER_ROLE
+    /// @param _pauser The address that will have the PAUSER_ROLE
+    /// @param _upgrader The address that will have the UPGRADER_ROLE
+    function initialize(
+        address _hypercertMinter,
+        uint256 _hypercertTypeId,
+        address _admin,
+        address _manager,
+        address _pauser,
+        address _upgrader
+    ) public initializer {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(MANAGER_ROLE, _manager);
+        _grantRole(PAUSER_ROLE, _pauser);
+        _grantRole(UPGRADER_ROLE, _upgrader);
 
         hypercertMinter = IHypercertToken(_hypercertMinter);
         hypercertTypeId = _hypercertTypeId;

@@ -42,8 +42,15 @@ contract HyperstakerTest is Test {
         rewardToken = new MockERC20("Reward", "RWD");
 
         implementation = new Hyperstaker();
-        bytes memory initData =
-            abi.encodeWithSelector(Hyperstaker.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
+        bytes memory initData = abi.encodeWithSelector(
+            Hyperstaker.initialize.selector,
+            address(hypercertMinter),
+            hypercertTypeId,
+            manager,
+            manager,
+            manager,
+            manager
+        );
 
         proxy = new ERC1967Proxy(address(implementation), initData);
         hypercertMinter.setApprovalForAll(address(proxy), true);

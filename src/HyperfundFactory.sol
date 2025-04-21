@@ -22,10 +22,24 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
     error NotOwnerOfHypercert();
 
     // Event to emit when a new Hyperfund is created
-    event HyperfundCreated(address indexed hyperfundAddress, address indexed manager, uint256 hypercertId);
+    event HyperfundCreated(
+        address indexed hyperfundAddress,
+        uint256 indexed hypercertId,
+        address admin,
+        address manager,
+        address pauser,
+        address upgrader
+    );
 
     // Event to emit when a new Hyperstaker is created
-    event HyperstakerCreated(address indexed hyperstakerAddress, address indexed manager, uint256 hypercertId);
+    event HyperstakerCreated(
+        address indexed hyperstakerAddress,
+        uint256 indexed hypercertId,
+        address admin,
+        address manager,
+        address pauser,
+        address upgrader
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -42,14 +56,18 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // Function to create a new Hyperfund
-    function createHyperfund(uint256 hypercertTypeId, address manager) external returns (address) {
+    function createHyperfund(uint256 hypercertTypeId, address admin, address manager, address pauser, address upgrader)
+        external
+        returns (address)
+    {
         require(manager != address(0), InvalidAddress());
         require(hyperfunds[hypercertTypeId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
 
         Hyperfund implementation = new Hyperfund();
-        bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
+        bytes memory initData = abi.encodeWithSelector(
+            Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, admin, manager, pauser, upgrader
+        );
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         IHypercertToken(hypercertMinter).setApprovalForAll(address(proxy), true);
@@ -57,30 +75,37 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         require(newHyperfund != address(0), DeploymentFailed());
 
         hyperfunds[hypercertTypeId] = true;
-        emit HyperfundCreated(newHyperfund, manager, hypercertTypeId);
+        emit HyperfundCreated(newHyperfund, hypercertTypeId, admin, manager, pauser, upgrader);
         return newHyperfund;
     }
 
     // Function to create a new Hyperstaker
-    function createHyperstaker(uint256 hypercertTypeId, address manager) external returns (address) {
+    function createHyperstaker(
+        uint256 hypercertTypeId,
+        address admin,
+        address manager,
+        address pauser,
+        address upgrader
+    ) external returns (address) {
         require(manager != address(0), InvalidAddress());
         require(hyperstakers[hypercertTypeId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
 
         Hyperstaker implementation = new Hyperstaker();
-        bytes memory initData =
-            abi.encodeWithSelector(Hyperstaker.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
+        bytes memory initData = abi.encodeWithSelector(
+            Hyperstaker.initialize.selector, address(hypercertMinter), hypercertTypeId, admin, manager, pauser, upgrader
+        );
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
 
         address newHyperstaker = address(proxy);
         require(newHyperstaker != address(0), DeploymentFailed());
 
         hyperstakers[hypercertTypeId] = true;
-        emit HyperstakerCreated(newHyperstaker, manager, hypercertTypeId);
+        emit HyperstakerCreated(newHyperstaker, hypercertTypeId, admin, manager, pauser, upgrader);
         return newHyperstaker;
     }
 
-    function createProject(uint256 hypercertTypeId, address manager)
+    function createProject(uint256 hypercertTypeId, address admin, address manager, address pauser, address upgrader)
         external
         returns (address hyperfund, address hyperstaker)
     {
@@ -88,21 +113,22 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         require(hyperfunds[hypercertTypeId] == false, AlreadyDeployed());
         require(msg.sender == IHypercertToken(hypercertMinter).ownerOf(hypercertTypeId + 1), NotOwnerOfHypercert());
 
-        bytes memory initData =
-            abi.encodeWithSelector(Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, manager);
+        bytes memory initData = abi.encodeWithSelector(
+            Hyperfund.initialize.selector, address(hypercertMinter), hypercertTypeId, admin, manager, pauser, upgrader
+        );
 
         Hyperfund hyperfundImplementation = new Hyperfund();
         ERC1967Proxy hyperfundProxy = new ERC1967Proxy(address(hyperfundImplementation), initData);
         hyperfund = address(hyperfundProxy);
         require(hyperfund != address(0), DeploymentFailed());
         hyperfunds[hypercertTypeId] = true;
-        emit HyperfundCreated(hyperfund, manager, hypercertTypeId);
+        emit HyperfundCreated(hyperfund, hypercertTypeId, admin, manager, pauser, upgrader);
 
         Hyperstaker hyperstakerImplementation = new Hyperstaker();
         ERC1967Proxy proxy = new ERC1967Proxy(address(hyperstakerImplementation), initData);
         hyperstaker = address(proxy);
         require(hyperstaker != address(0), DeploymentFailed());
         hyperstakers[hypercertTypeId] = true;
-        emit HyperstakerCreated(hyperstaker, manager, hypercertTypeId);
+        emit HyperstakerCreated(hyperstaker, hypercertTypeId, admin, manager, pauser, upgrader);
     }
 }
