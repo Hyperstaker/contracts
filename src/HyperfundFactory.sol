@@ -21,7 +21,6 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
     error AlreadyDeployed();
     error NotOwnerOfHypercert();
 
-    // Event to emit when a new Hyperfund is created
     event HyperfundCreated(
         address indexed hyperfundAddress,
         uint256 indexed hypercertId,
@@ -31,7 +30,6 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         address upgrader
     );
 
-    // Event to emit when a new Hyperstaker is created
     event HyperstakerCreated(
         address indexed hyperstakerAddress,
         uint256 indexed hypercertId,
@@ -41,7 +39,6 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         address upgrader
     );
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
@@ -55,7 +52,13 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    // Function to create a new Hyperfund
+    /// @notice Create a new Hyperfund
+    /// @param hypercertTypeId id of the Hypercert type to create the Hyperfund for
+    /// @param admin address of the admin of the Hyperfund
+    /// @param manager address of the manager of the Hyperfund
+    /// @param pauser address of the pauser of the Hyperfund
+    /// @param upgrader address of the upgrader of the Hyperfund
+    /// @return address of the new Hyperfund
     function createHyperfund(uint256 hypercertTypeId, address admin, address manager, address pauser, address upgrader)
         external
         returns (address)
@@ -79,7 +82,13 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         return newHyperfund;
     }
 
-    // Function to create a new Hyperstaker
+    /// @notice Create a new Hyperstaker
+    /// @param hypercertTypeId id of the Hypercert type to create the Hyperstaker for
+    /// @param admin address of the admin of the Hyperstaker
+    /// @param manager address of the manager of the Hyperstaker
+    /// @param pauser address of the pauser of the Hyperstaker
+    /// @param upgrader address of the upgrader of the Hyperstaker
+    /// @return address of the new Hyperstaker
     function createHyperstaker(
         uint256 hypercertTypeId,
         address admin,
@@ -105,6 +114,14 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         return newHyperstaker;
     }
 
+    /// @notice Create a new Hyperfund and Hyperstaker
+    /// @param hypercertTypeId id of the Hypercert type to create the Hyperfund and Hyperstaker for
+    /// @param admin address of the admin of the Hyperfund and Hyperstaker
+    /// @param manager address of the manager of the Hyperfund and Hyperstaker
+    /// @param pauser address of the pauser of the Hyperfund and Hyperstaker
+    /// @param upgrader address of the upgrader of the Hyperfund and Hyperstaker
+    /// @return hyperfund address of the new Hyperfund
+    /// @return hyperstaker address of the new Hyperstaker
     function createProject(uint256 hypercertTypeId, address admin, address manager, address pauser, address upgrader)
         external
         returns (address hyperfund, address hyperstaker)

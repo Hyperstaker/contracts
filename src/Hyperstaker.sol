@@ -94,6 +94,11 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
 
+    // ADMIN FUNCTIONS
+
+    /// @notice Set the reward for the current round, this ends the current round and starts a new one. Only callable by a manager
+    /// @param _rewardToken address of the reward token
+    /// @param _rewardAmount amount of the reward for the current round
     function setReward(address _rewardToken, uint256 _rewardAmount) external payable onlyRole(MANAGER_ROLE) {
         Round storage currentRound = rounds[rounds.length - 1];
         currentRound.totalRewards = _rewardAmount;
@@ -112,6 +117,20 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         emit RewardSet(_rewardToken, _rewardAmount);
     }
 
+    /// @notice Pause the contract, only callable by a pauser
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    /// @notice Unpause the contract, only callable by a pauser
+    function unpause() external onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
+
+    // USER FUNCTIONS
+
+    /// @notice Stake a Hypercert, this will transfer the Hypercert from the user to the contract
+    /// @param _hypercertId id of the Hypercert to stake
     function stake(uint256 _hypercertId) external whenNotPaused {
         require(hypercertMinter.unitsOf(_hypercertId) != 0, NoUnitsInHypercert());
         uint256 hypercertTypeId_ = _getHypercertTypeId(_hypercertId);
@@ -123,6 +142,9 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         hypercertMinter.safeTransferFrom(msg.sender, address(this), _hypercertId, 1, "");
     }
 
+    /// @notice Unstake a Hypercert, this will transfer the Hypercert from the contract to the user and delete all
+    ///stake information
+    /// @param _hypercertId id of the Hypercert to unstake
     function unstake(uint256 _hypercertId) external whenNotPaused {
         require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
         address staker = stakes[_hypercertId].staker;
@@ -132,6 +154,9 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
     }
 
+    /// @notice Claim a reward eligable by a staked Hypercert for a given round
+    /// @param _hypercertId id of the Hypercert to claim the reward for
+    /// @param _roundId id of the round to claim the reward for
     function claimReward(uint256 _hypercertId, uint256 _roundId) external whenNotPaused {
         require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
         address staker = stakes[_hypercertId].staker;
@@ -152,6 +177,12 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         }
     }
 
+    // VIEW FUNCTIONS
+
+    /// @notice Calculate the reward for a staked Hypercert for a given round
+    /// @param _hypercertId id of the Hypercert to calculate the reward for
+    /// @param _roundId id of the round to calculate the reward for
+    /// @return amount of the reward eligable for the staked Hypercert for the given round
     function calculateReward(uint256 _hypercertId, uint256 _roundId) public view returns (uint256) {
         Round memory round = rounds[_roundId];
         require(round.endTime != 0, RoundNotSet());
@@ -163,30 +194,40 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
             round.totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * round.duration);
     }
 
-    function pause() external onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    function unpause() external onlyRole(PAUSER_ROLE) {
-        _unpause();
-    }
-
-    function getStakeInfo(uint256 _hypercertId) external view returns (Stake memory) {
-        return stakes[_hypercertId];
-    }
-
-    function getRoundInfo(uint256 _roundId) external view returns (Round memory) {
-        return rounds[_roundId];
-    }
-
-    function _getHypercertTypeId(uint256 _hypercertId) internal pure returns (uint256) {
-        return _hypercertId & TYPE_MASK;
-    }
-
+    /// @notice Check if a staked Hypercert had already claimed a reward for a given round
+    /// @param _hypercertId id of the Hypercert to check
+    /// @param _roundId id of the round to check
+    /// @return true if the staked Hypercert had claimed a reward for the given round, false otherwise
     function isRoundClaimed(uint256 _hypercertId, uint256 _roundId) public view returns (bool) {
         return (stakes[_hypercertId].claimed & (1 << _roundId)) != 0;
     }
 
+    /// @notice Get the stake information for a staked Hypercert
+    /// @param _hypercertId id of the Hypercert to get the stake information for
+    /// @return stake information for the staked Hypercert (staking start time, staker address, claimed rounds bitmap)
+    function getStakeInfo(uint256 _hypercertId) external view returns (Stake memory) {
+        return stakes[_hypercertId];
+    }
+
+    /// @notice Get the round information for a given round
+    /// @param _roundId id of the round to get the information for
+    /// @return round information for the given round (start time, end time, duration, total rewards, reward token)
+    function getRoundInfo(uint256 _roundId) external view returns (Round memory) {
+        return rounds[_roundId];
+    }
+
+    // INTERNAL FUNCTIONS
+
+    /// @notice Get the hypercert type id for a given hypercert id
+    /// @param _hypercertId id of the Hypercert to get the type id for
+    /// @return hypercert type id for the given hypercert id
+    function _getHypercertTypeId(uint256 _hypercertId) internal pure returns (uint256) {
+        return _hypercertId & TYPE_MASK;
+    }
+
+    /// @notice Set a round as claimed for a staked Hypercert
+    /// @param _hypercertId id of the Hypercert to set the round as claimed for
+    /// @param _roundId id of the round to set as claimed
     function _setRoundClaimed(uint256 _hypercertId, uint256 _roundId) internal {
         stakes[_hypercertId].claimed |= (1 << _roundId);
     }
