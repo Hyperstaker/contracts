@@ -20,20 +20,20 @@ error RoundNotSet();
 error AlreadyClaimed();
 
 contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
-    uint256 internal constant TYPE_MASK = type(uint256).max << 128;
-
+    // immutable values that are set on initialization
     IHypercertToken public hypercertMinter;
     uint256 public hypercertTypeId;
     uint256 public totalUnits;
+
+    mapping(uint256 hypercertId => Stake stake) public stakes;
     Round[] public rounds;
+
+    uint256 internal constant TYPE_MASK = type(uint256).max << 128;
 
     // Roles
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-
-    // Mapping of hypercert id to stake info
-    mapping(uint256 => Stake) public stakes;
 
     struct Stake {
         uint256 stakingStartTime;
@@ -194,4 +194,12 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     function onERC1155Received(address, address, uint256, uint256, bytes memory) public pure returns (bytes4) {
         return this.onERC1155Received.selector;
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     * Keeping a total of 30 slots available.
+     */
+    uint256[24] private __gap;
 }

@@ -12,7 +12,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     address hypercertMinter;
 
-    // Mapping to associate (hypercert ID) with Hyperfund and Hyperstaker addresses
+    // Mapping to associate (hypercert ID) with flag for Hyperfund and Hyperstaker created
     mapping(uint256 => bool) public hyperfunds;
     mapping(uint256 => bool) public hyperstakers;
 
@@ -131,4 +131,12 @@ contract HyperfundFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable 
         hyperstakers[hypercertTypeId] = true;
         emit HyperstakerCreated(hyperstaker, hypercertTypeId, admin, manager, pauser, upgrader);
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     * Keeping a total of 30 slots available.
+     */
+    uint256[26] private __gap;
 }
