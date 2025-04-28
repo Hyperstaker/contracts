@@ -9,7 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IHypercertToken} from "./interfaces/IHypercertToken.sol";
 
 contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
-    // immutable values that are read from the HyperfundStorage
+    // immutable values that are set on initialization
     IHypercertToken public hypercertMinter;
     uint256 public hypercertId;
     uint256 public hypercertTypeId;
@@ -21,9 +21,6 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
 
     // allowlist for non-financial contributions, 0 means the contributor is not allowed
     mapping(address contributor => uint256 units) public nonfinancialContributions;
-
-    // keeps track of how many fractions have been split off the original hypercert
-    // WARNING: if fractions are split outside of the hyperfund it would result in the hyperfund failing
 
     uint256 internal constant TYPE_MASK = type(uint256).max << 128;
 
@@ -216,4 +213,12 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     function _isFraction(uint256 _fractionId) internal view returns (bool) {
         return _fractionId & TYPE_MASK == hypercertTypeId;
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     * Keeping a total of 30 slots available.
+     */
+    uint256[23] private __gap;
 }
