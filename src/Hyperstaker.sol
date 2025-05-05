@@ -54,6 +54,13 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     event RewardClaimed(uint256 indexed hypercertId, uint256 reward);
     event RewardSet(address indexed token, uint256 amount);
 
+    modifier onlyStaker(uint256 _hypercertId) {
+        require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
+        address staker = stakes[_hypercertId].staker;
+        require(staker == msg.sender, NotStakerOfHypercert(staker));
+        _;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -96,7 +103,8 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
 
     // ADMIN FUNCTIONS
 
-    /// @notice Set the reward for the current round, this ends the current round and starts a new one. Only callable by a manager
+    /// @notice Set the reward for the current round, this ends the current round and starts a new one. Only callable
+    /// by a manager
     /// @param _rewardToken address of the reward token
     /// @param _rewardAmount amount of the reward for the current round
     function setReward(address _rewardToken, uint256 _rewardAmount) external payable onlyRole(MANAGER_ROLE) {
@@ -129,7 +137,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
 
     // USER FUNCTIONS
 
-    /// @notice Stake a Hypercert, this will transfer the Hypercert from the user to the contract
+    /// @notice Stake a Hypercert, this will transfer the Hypercert from the owner to the contract
     /// @param _hypercertId id of the Hypercert to stake
     function stake(uint256 _hypercertId) external whenNotPaused {
         require(hypercertMinter.unitsOf(_hypercertId) != 0, NoUnitsInHypercert());
@@ -143,38 +151,33 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     }
 
     /// @notice Unstake a Hypercert, this will transfer the Hypercert from the contract to the user and delete all
-    ///stake information
+    /// stake information
     /// @param _hypercertId id of the Hypercert to unstake
-    function unstake(uint256 _hypercertId) external whenNotPaused {
-        require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
-        address staker = stakes[_hypercertId].staker;
-        require(staker == msg.sender, NotStakerOfHypercert(staker));
-        delete stakes[_hypercertId];
-        emit Unstaked(_hypercertId);
-        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
+    function unstake(uint256 _hypercertId) public whenNotPaused onlyStaker(_hypercertId) {
+        _unstake(_hypercertId);
     }
 
     /// @notice Claim a reward eligable by a staked Hypercert for a given round
     /// @param _hypercertId id of the Hypercert to claim the reward for
     /// @param _roundId id of the round to claim the reward for
-    function claimReward(uint256 _hypercertId, uint256 _roundId) external whenNotPaused {
-        require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
-        address staker = stakes[_hypercertId].staker;
-        require(staker == msg.sender, NotStakerOfHypercert(staker));
+    function claimReward(uint256 _hypercertId, uint256 _roundId) external whenNotPaused onlyStaker(_hypercertId) {
         require(!isRoundClaimed(_hypercertId, _roundId), AlreadyClaimed());
         uint256 reward = _calculateReward(_hypercertId, _roundId);
         require(reward != 0, NoRewardAvailable());
 
-        _setRoundClaimed(_hypercertId, _roundId);
-        emit RewardClaimed(_hypercertId, reward);
+        _claimReward(_hypercertId, _roundId, reward);
+    }
 
-        address rewardToken = rounds[_roundId].rewardToken;
-        if (rewardToken != address(0)) {
-            require(IERC20(rewardToken).transfer(msg.sender, reward), RewardTransferFailed());
-        } else {
-            (bool success,) = payable(msg.sender).call{value: reward}("");
-            require(success, NativeTokenTransferFailed());
+    /// @notice Claim all rewards available for a staked Hypercert and unstake it
+    /// @param _hypercertId id of the Hypercert to claim all rewards and unstake
+    function claimAndUnstake(uint256 _hypercertId) external whenNotPaused onlyStaker(_hypercertId) {
+        for (uint256 i = 0; i < rounds.length - 1; i++) {
+            uint256 reward = calculateReward(_hypercertId, i);
+            if (reward != 0) {
+                _claimReward(_hypercertId, i, reward);
+            }
         }
+        unstake(_hypercertId);
     }
 
     // VIEW FUNCTIONS
@@ -184,6 +187,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     /// @param _roundId id of the round to calculate the reward for
     /// @return amount of the reward eligable for the staked Hypercert for the given round
     function calculateReward(uint256 _hypercertId, uint256 _roundId) public view returns (uint256) {
+        require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
         if (isRoundClaimed(_hypercertId, _roundId)) {
             return 0;
         }
@@ -222,11 +226,36 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         Round memory round = rounds[_roundId];
         require(round.endTime != 0, RoundNotSet());
         uint256 stakeStartTime = stakes[_hypercertId].stakingStartTime;
-        require(stakeStartTime != 0, NotStaked());
         stakeStartTime = stakeStartTime < round.startTime ? round.startTime : stakeStartTime;
         uint256 stakeDuration = stakeStartTime > round.endTime ? 0 : round.endTime - stakeStartTime;
         return
             round.totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * round.duration);
+    }
+
+    /// @notice Unstake a Hypercert, this will transfer the Hypercert from the contract to the user and delete all
+    /// stake information
+    /// @param _hypercertId id of the Hypercert to unstake
+    function _unstake(uint256 _hypercertId) internal {
+        delete stakes[_hypercertId];
+        emit Unstaked(_hypercertId);
+        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
+    }
+
+    /// @notice Set a round as claimed for a staked Hypercert and transfer the reward to the user
+    /// @param _hypercertId id of the Hypercert to claim the reward for
+    /// @param _roundId id of the round to claim the reward for
+    /// @param _reward amount of the reward to claim
+    function _claimReward(uint256 _hypercertId, uint256 _roundId, uint256 _reward) internal {
+        _setRoundClaimed(_hypercertId, _roundId);
+        emit RewardClaimed(_hypercertId, _reward);
+
+        address rewardToken = rounds[_roundId].rewardToken;
+        if (rewardToken != address(0)) {
+            require(IERC20(rewardToken).transfer(msg.sender, _reward), RewardTransferFailed());
+        } else {
+            (bool success,) = payable(msg.sender).call{value: _reward}("");
+            require(success, NativeTokenTransferFailed());
+        }
     }
 
     /// @notice Get the hypercert type id for a given hypercert id
