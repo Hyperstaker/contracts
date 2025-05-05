@@ -143,15 +143,13 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     }
 
     /// @notice Unstake a Hypercert, this will transfer the Hypercert from the contract to the user and delete all
-    ///stake information
+    /// stake information
     /// @param _hypercertId id of the Hypercert to unstake
-    function unstake(uint256 _hypercertId) external whenNotPaused {
+    function unstake(uint256 _hypercertId) public whenNotPaused {
         require(stakes[_hypercertId].stakingStartTime != 0, NotStaked());
         address staker = stakes[_hypercertId].staker;
         require(staker == msg.sender, NotStakerOfHypercert(staker));
-        delete stakes[_hypercertId];
-        emit Unstaked(_hypercertId);
-        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
+        _unstake(_hypercertId);
     }
 
     /// @notice Claim a reward eligable by a staked Hypercert for a given round
@@ -165,16 +163,21 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         uint256 reward = _calculateReward(_hypercertId, _roundId);
         require(reward != 0, NoRewardAvailable());
 
-        _setRoundClaimed(_hypercertId, _roundId);
-        emit RewardClaimed(_hypercertId, reward);
+        _claimReward(_hypercertId, _roundId, reward);
+    }
 
-        address rewardToken = rounds[_roundId].rewardToken;
-        if (rewardToken != address(0)) {
-            require(IERC20(rewardToken).transfer(msg.sender, reward), RewardTransferFailed());
-        } else {
-            (bool success,) = payable(msg.sender).call{value: reward}("");
-            require(success, NativeTokenTransferFailed());
+    /// @notice Claim all rewards available for a staked Hypercert and unstake it
+    /// @param _hypercertId id of the Hypercert to claim all rewards and unstake
+    function claimAndUnstake(uint256 _hypercertId) external whenNotPaused {
+        address staker = stakes[_hypercertId].staker;
+        require(staker == msg.sender, NotStakerOfHypercert(staker));
+        for (uint256 i = 0; i < rounds.length - 1; i++) {
+            uint256 reward = calculateReward(_hypercertId, i);
+            if (reward != 0) {
+                _claimReward(_hypercertId, i, reward);
+            }
         }
+        unstake(_hypercertId);
     }
 
     // VIEW FUNCTIONS
@@ -227,6 +230,32 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         uint256 stakeDuration = stakeStartTime > round.endTime ? 0 : round.endTime - stakeStartTime;
         return
             round.totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * round.duration);
+    }
+
+    /// @notice Unstake a Hypercert, this will transfer the Hypercert from the contract to the user and delete all
+    /// stake information
+    /// @param _hypercertId id of the Hypercert to unstake
+    function _unstake(uint256 _hypercertId) internal {
+        delete stakes[_hypercertId];
+        emit Unstaked(_hypercertId);
+        hypercertMinter.safeTransferFrom(address(this), msg.sender, _hypercertId, 1, "");
+    }
+
+    /// @notice Set a round as claimed for a staked Hypercert and transfer the reward to the user
+    /// @param _hypercertId id of the Hypercert to claim the reward for
+    /// @param _roundId id of the round to claim the reward for
+    /// @param _reward amount of the reward to claim
+    function _claimReward(uint256 _hypercertId, uint256 _roundId, uint256 _reward) internal {
+        _setRoundClaimed(_hypercertId, _roundId);
+        emit RewardClaimed(_hypercertId, _reward);
+
+        address rewardToken = rounds[_roundId].rewardToken;
+        if (rewardToken != address(0)) {
+            require(IERC20(rewardToken).transfer(msg.sender, _reward), RewardTransferFailed());
+        } else {
+            (bool success,) = payable(msg.sender).call{value: _reward}("");
+            require(success, NativeTokenTransferFailed());
+        }
     }
 
     /// @notice Get the hypercert type id for a given hypercert id
