@@ -225,6 +225,14 @@ contract HyperstakerTest is Test {
         assertEq(hyperstaker.calculateReward(stakerHypercertId, 0), 0);
     }
 
+    function test_CalculateReward_0WhenRoundClaimed() public {
+        _setupStake();
+        _setupRewardEth();
+        vm.prank(staker);
+        hyperstaker.claimReward(stakerHypercertId, 0);
+        assertEq(hyperstaker.calculateReward(stakerHypercertId, 0), 0);
+    }
+
     function test_RevertWhen_CalculateRewardNoReward() public {
         _setupStake();
         vm.expectRevert(RoundNotSet.selector);

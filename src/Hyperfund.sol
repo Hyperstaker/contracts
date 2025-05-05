@@ -112,7 +112,11 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// @notice Issue a Hypercert fraction for a non-financial contribution, only callable by a manager
     /// @param _contributor address of the contributor to receive the Hypercert fraction
     /// @param _units amount of units to register as a non-financial contribution
-    function nonfinancialContribution(address _contributor, uint256 _units) external whenNotPaused onlyRole(MANAGER_ROLE) {
+    function nonfinancialContribution(address _contributor, uint256 _units)
+        external
+        whenNotPaused
+        onlyRole(MANAGER_ROLE)
+    {
         uint256 availableSupply = hypercertMinter.unitsOf(hypercertId);
         require(availableSupply >= _units, AmountExceedsAvailableSupply(availableSupply));
         _nonfinancialContribution(_contributor, _units);

@@ -364,6 +364,8 @@ contract HyperfundTest is Test {
     }
 
     function test_RevertWhen_RedeemNotFraction() public {
+        vm.prank(manager);
+        hyperfund.nonfinancialContribution(contributor, amount);
         vm.startPrank(contributor);
         vm.recordLogs();
         hypercertMinter.mintClaim(contributor, totalUnits, "uri", IHypercertToken.TransferRestrictions.AllowAll);
