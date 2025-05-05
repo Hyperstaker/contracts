@@ -162,7 +162,7 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         address staker = stakes[_hypercertId].staker;
         require(staker == msg.sender, NotStakerOfHypercert(staker));
         require(!isRoundClaimed(_hypercertId, _roundId), AlreadyClaimed());
-        uint256 reward = calculateReward(_hypercertId, _roundId);
+        uint256 reward = _calculateReward(_hypercertId, _roundId);
         require(reward != 0, NoRewardAvailable());
 
         _setRoundClaimed(_hypercertId, _roundId);
@@ -184,14 +184,10 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     /// @param _roundId id of the round to calculate the reward for
     /// @return amount of the reward eligable for the staked Hypercert for the given round
     function calculateReward(uint256 _hypercertId, uint256 _roundId) public view returns (uint256) {
-        Round memory round = rounds[_roundId];
-        require(round.endTime != 0, RoundNotSet());
-        uint256 stakeStartTime = stakes[_hypercertId].stakingStartTime;
-        require(stakeStartTime != 0, NotStaked());
-        stakeStartTime = stakeStartTime < round.startTime ? round.startTime : stakeStartTime;
-        uint256 stakeDuration = stakeStartTime > round.endTime ? 0 : round.endTime - stakeStartTime;
-        return
-            round.totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * round.duration);
+        if (isRoundClaimed(_hypercertId, _roundId)) {
+            return 0;
+        }
+        return _calculateReward(_hypercertId, _roundId);
     }
 
     /// @notice Check if a staked Hypercert had already claimed a reward for a given round
@@ -217,6 +213,21 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     }
 
     // INTERNAL FUNCTIONS
+
+    /// @notice Calculate the reward for a staked Hypercert for a given round
+    /// @param _hypercertId id of the Hypercert to calculate the reward for
+    /// @param _roundId id of the round to calculate the reward for
+    /// @return amount of the reward eligable for the staked Hypercert for the given round
+    function _calculateReward(uint256 _hypercertId, uint256 _roundId) internal view returns (uint256) {
+        Round memory round = rounds[_roundId];
+        require(round.endTime != 0, RoundNotSet());
+        uint256 stakeStartTime = stakes[_hypercertId].stakingStartTime;
+        require(stakeStartTime != 0, NotStaked());
+        stakeStartTime = stakeStartTime < round.startTime ? round.startTime : stakeStartTime;
+        uint256 stakeDuration = stakeStartTime > round.endTime ? 0 : round.endTime - stakeStartTime;
+        return
+            round.totalRewards * hypercertMinter.unitsOf(_hypercertId) * stakeDuration / (totalUnits * round.duration);
+    }
 
     /// @notice Get the hypercert type id for a given hypercert id
     /// @param _hypercertId id of the Hypercert to get the type id for
