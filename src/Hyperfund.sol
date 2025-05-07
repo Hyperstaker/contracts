@@ -14,6 +14,9 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     uint256 public hypercertId;
     uint256 public hypercertTypeId;
     uint256 public hypercertUnits;
+    address public feeRecipient;
+    /// @notice fee percentage, 10000 = 100%
+    uint256 public feePercentage;
 
     // erc20 token allowlist, 0 means the token is not allowed
     // negative multiplier means the total amount of Hypercert units is smaller than the amount of tokens it represents and rounding is applied
@@ -66,7 +69,9 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
         address _admin,
         address _manager,
         address _pauser,
-        address _upgrader
+        address _upgrader,
+        address _feeRecipient,
+        uint256 _feePercentage
     ) public initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -81,6 +86,8 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
         hypercertTypeId = _hypercertTypeId;
         hypercertId = hypercertTypeId + 1;
         hypercertUnits = hypercertMinter.unitsOf(hypercertId);
+        feeRecipient = _feeRecipient;
+        feePercentage = _feePercentage;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
@@ -163,10 +170,14 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
         uint256 units = _tokenAmountToUnits(_token, _amount);
         uint256 availableSupply = hypercertMinter.unitsOf(hypercertId);
         require(availableSupply >= units, AmountExceedsAvailableSupply(availableSupply));
+        uint256 feeAmount = (_amount * feePercentage) / 10000;
         if (_token == address(0)) {
             require(msg.value == _amount, InvalidAmount());
+            (bool success,) = payable(feeRecipient).call{value: feeAmount}("");
+            require(success, TransferFailed());
         } else {
             require(IERC20(_token).transferFrom(msg.sender, address(this), _amount), TransferFailed());
+            require(IERC20(_token).transfer(feeRecipient, feeAmount), TransferFailed());
         }
         _mintFraction(msg.sender, units);
         emit Funded(_token, _amount);
