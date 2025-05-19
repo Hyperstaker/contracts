@@ -108,6 +108,7 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
     /// @param _amount amount of the token to withdraw
     /// @param _to address to send the funds to
     function withdrawFunds(address _token, uint256 _amount, address _to) external onlyRole(MANAGER_ROLE) {
+        require(_token != address(0), InvalidAddress());
         if (_token == address(0)) {
             payable(_to).transfer(_amount);
         } else {
