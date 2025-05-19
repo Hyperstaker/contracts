@@ -194,6 +194,8 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
         require(_isFraction(_fractionId), NotFractionOfThisHypercert(hypercertTypeId));
         uint256 units = hypercertMinter.unitsOf(_fractionId);
         require(units != 0, InvalidAmount());
+        nonfinancialContributions[msg.sender] -= units;
+        hypercertMinter.burnFraction(msg.sender, _fractionId); // sets the units of the fraction to 0
         uint256 tokenAmount = _unitsToTokenAmount(_token, units);
         if (_token == address(0)) {
             (bool success,) = payable(msg.sender).call{value: tokenAmount}("");
@@ -201,8 +203,6 @@ contract Hyperfund is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgrade
         } else {
             require(IERC20(_token).transfer(msg.sender, tokenAmount), TransferFailed());
         }
-        hypercertMinter.burnFraction(msg.sender, _fractionId); // sets the units of the fraction to 0
-        nonfinancialContributions[msg.sender] -= units;
         emit FractionRedeemed(_fractionId, _token, tokenAmount);
     }
 
