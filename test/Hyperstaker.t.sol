@@ -20,6 +20,8 @@ contract HyperstakerTest is Test {
     address public manager = vm.addr(1);
     address public staker = vm.addr(2);
     address public staker2 = vm.addr(3);
+    address public feeRecipient = vm.addr(4);
+    uint256 public feePercentage = 100;
     uint256 public totalUnits = 100000000;
     uint256 public stakeAmount = 10000;
     uint256 public rewardAmount = 10 ether;
@@ -49,7 +51,9 @@ contract HyperstakerTest is Test {
             manager,
             manager,
             manager,
-            manager
+            manager,
+            feeRecipient,
+            feePercentage
         );
 
         proxy = new ERC1967Proxy(address(implementation), initData);
@@ -68,6 +72,8 @@ contract HyperstakerTest is Test {
         assertEq(address(hyperstaker.hypercertMinter()), address(hypercertMinter));
         assertEq(hyperstaker.totalUnits(), totalUnits);
         assertEq(hyperstaker.getRoundInfo(0).startTime, roundStartTime);
+        assertEq(hyperstaker.feeRecipient(), feeRecipient);
+        assertEq(hyperstaker.feePercentage(), feePercentage);
     }
 
     function test_SetReward_ERC20() public {

@@ -21,6 +21,8 @@ contract HyperfundFactoryTest is Test {
     address public hypercertMinter;
     uint256 hypercertId;
     address manager;
+    address feeRecipient;
+    uint256 feePercentage = 100;
     uint256 public totalUnits = 100000000;
 
     event Upgraded(address indexed implementation);
@@ -40,6 +42,7 @@ contract HyperfundFactoryTest is Test {
         hyperfundFactory = HyperfundFactory(address(proxy));
 
         manager = address(this);
+        feeRecipient = vm.addr(1);
         // hypercertId = HT(hypercertMinter).mintClaim(
         //     address(this), totalUnits, "uri", HT.TransferRestrictions.AllowAll
         // );
@@ -101,9 +104,9 @@ contract HyperfundFactoryTest is Test {
         vm.expectEmit(false, true, false, true);
         // We can't know the hyperfund address beforehand, but we can emit a dummy event
         // with the other parameters we expect
-        emit HyperfundFactory.HyperfundCreated(address(0), hypercertId, manager, manager, manager, manager);
+        emit HyperfundFactory.HyperfundCreated(address(0), hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
 
-        address hyperfundAddress = hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
+        address hyperfundAddress = hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
 
         bool createdHyperfund = hyperfundFactory.hyperfunds(hypercertId);
         assertTrue(createdHyperfund != false, "Hyperfund should be created and mapped correctly");
@@ -115,9 +118,9 @@ contract HyperfundFactoryTest is Test {
         vm.expectEmit(false, true, false, true);
         // We can't know the hyperfund address beforehand, but we can emit a dummy event
         // with the other parameters we expect
-        emit HyperfundFactory.HyperstakerCreated(address(0), hypercertId, manager, manager, manager, manager);
+        emit HyperfundFactory.HyperstakerCreated(address(0), hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
 
-        address hyperstakerAddress = hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
+        address hyperstakerAddress = hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
 
         bool createdHyperstaker = hyperfundFactory.hyperstakers(hypercertId);
         assertTrue(createdHyperstaker != false, "Hyperstaker should be created and mapped correctly");
@@ -125,27 +128,27 @@ contract HyperfundFactoryTest is Test {
     }
 
     function test_RevertWhen_RedeployingHyperfundWithSameHypercertId() public {
-        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
+        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
 
         vm.expectRevert(HyperfundFactory.AlreadyDeployed.selector);
-        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
+        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
     }
 
     function test_RevertWhen_RedeployingHyperStakerWithSameHypercertId() public {
-        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
+        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
 
         vm.expectRevert(HyperfundFactory.AlreadyDeployed.selector);
-        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
+        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
     }
 
     function test_RevertWhen_CreateHyperfundZeroManager() public {
         vm.expectRevert(HyperfundFactory.InvalidAddress.selector);
-        hyperfundFactory.createHyperfund(hypercertId, address(0), address(0), address(0), address(0));
+        hyperfundFactory.createHyperfund(hypercertId, address(0), address(0), address(0), address(0), feeRecipient, feePercentage);
     }
 
     function test_RevertWhen_CreateHyperstakerZeroManager() public {
         vm.expectRevert(HyperfundFactory.InvalidAddress.selector);
-        hyperfundFactory.createHyperstaker(hypercertId, address(0), address(0), address(0), address(0));
+        hyperfundFactory.createHyperstaker(hypercertId, address(0), address(0), address(0), address(0), feeRecipient, feePercentage);
     }
 
     function test_RevertWhen_FailedHyperfundDeployment() public {
@@ -170,7 +173,7 @@ contract HyperfundFactoryTest is Test {
         HyperfundFactory factory = HyperfundFactory(address(proxy));
 
         vm.expectRevert();
-        factory.createHyperfund(hypercertId, manager, manager, manager, manager);
+        factory.createHyperfund(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
     }
 
     function test_RevertWhen_FailedHyperstakerDeployment() public {
@@ -195,24 +198,24 @@ contract HyperfundFactoryTest is Test {
         HyperfundFactory factory = HyperfundFactory(address(proxy));
 
         vm.expectRevert();
-        factory.createHyperstaker(hypercertId, manager, manager, manager, manager);
+        factory.createHyperstaker(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
     }
 
     function test_RevertWhen_HyperfundCreatorNotOwnerOfHypercert() public {
         vm.prank(makeAddr("user2"));
         vm.expectRevert(HyperfundFactory.NotOwnerOfHypercert.selector);
-        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager);
+        hyperfundFactory.createHyperfund(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
     }
 
     function test_RevertWhen_HyperstakerCreatorNotOwnerOfHypercert() public {
         vm.prank(makeAddr("user2"));
         vm.expectRevert(HyperfundFactory.NotOwnerOfHypercert.selector);
-        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager);
+        hyperfundFactory.createHyperstaker(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
     }
 
     function test_CreateProject() public {
         (address hyperfundAddress, address hyperstakerAddress) =
-            hyperfundFactory.createProject(hypercertId, manager, manager, manager, manager);
+            hyperfundFactory.createProject(hypercertId, manager, manager, manager, manager, feeRecipient, feePercentage);
         assertTrue(hyperfundFactory.hyperfunds(hypercertId));
         assertTrue(hyperfundFactory.hyperstakers(hypercertId));
         assertEq(Hyperfund(hyperfundAddress).hypercertTypeId(), hypercertId);

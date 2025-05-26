@@ -24,6 +24,9 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     IHypercertToken public hypercertMinter;
     uint256 public hypercertTypeId;
     uint256 public totalUnits;
+     address public feeRecipient;
+    /// @notice fee percentage, 10000 = 100%
+    uint256 public feePercentage;
 
     mapping(uint256 hypercertId => Stake stake) public stakes;
     Round[] public rounds;
@@ -74,13 +77,17 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
     /// @param _manager The address that will have the MANAGER_ROLE
     /// @param _pauser The address that will have the PAUSER_ROLE
     /// @param _upgrader The address that will have the UPGRADER_ROLE
+    /// @param _feeRecipient The address that will receive the fees on rewards
+    /// @param _feePercentage The percentage of the reward that will be sent to the fee recipient
     function initialize(
         address _hypercertMinter,
         uint256 _hypercertTypeId,
         address _admin,
         address _manager,
         address _pauser,
-        address _upgrader
+        address _upgrader,
+        address _feeRecipient,
+        uint256 _feePercentage
     ) public initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -97,6 +104,8 @@ contract Hyperstaker is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgra
         Round memory round;
         round.startTime = block.timestamp;
         rounds.push(round);
+        feeRecipient = _feeRecipient;
+        feePercentage = _feePercentage;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
