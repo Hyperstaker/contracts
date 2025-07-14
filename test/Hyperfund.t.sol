@@ -17,9 +17,9 @@ contract HyperfundTest is Test {
     MockERC20 public fundingToken;
     uint256 public hypercertTypeId;
     uint256 public fractionHypercertId;
-    address public manager = vm.addr(1);
-    address public contributor = vm.addr(2);
-    address public contributor2 = vm.addr(3);
+    address public manager = makeAddr("manager");
+    address public contributor = makeAddr("contributor");
+    address public contributor2 = makeAddr("contributor2");
     uint256 public totalUnits = 100000000;
     uint256 public amount = 10000;
     uint256 public amount2 = 20000;
