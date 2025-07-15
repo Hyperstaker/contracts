@@ -17,10 +17,10 @@ contract IntegrationTest is Test {
     MockERC20 public fundingToken;
     uint256 public hypercertTypeId;
     uint256 public hypercertId;
-    address public manager = vm.addr(1);
-    address public contributor = vm.addr(2);
-    address public contributor2 = vm.addr(3);
-    address public contributor3 = vm.addr(4);
+    address public manager = makeAddr("manager");
+    address public contributor = makeAddr("contributor");
+    address public contributor2 = makeAddr("contributor2");
+    address public contributor3 = makeAddr("contributor3");
     uint256 public totalUnits = 100000000;
 
     bytes32 public MANAGER_ROLE = keccak256("MANAGER_ROLE");

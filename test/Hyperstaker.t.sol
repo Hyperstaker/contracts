@@ -17,9 +17,9 @@ contract HyperstakerTest is Test {
     uint256 public hypercertTypeId;
     uint256 public fractionHypercertId;
     uint256 public stakerHypercertId;
-    address public manager = vm.addr(1);
-    address public staker = vm.addr(2);
-    address public staker2 = vm.addr(3);
+    address public manager = makeAddr("manager");
+    address public staker = makeAddr("staker");
+    address public staker2 = makeAddr("staker2");
     uint256 public totalUnits = 100000000;
     uint256 public stakeAmount = 10000;
     uint256 public rewardAmount = 10 ether;
